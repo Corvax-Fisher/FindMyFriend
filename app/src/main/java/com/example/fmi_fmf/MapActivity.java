@@ -1,7 +1,6 @@
 package com.example.fmi_fmf;
 
 import android.app.Activity;
-import android.app.ActionBar;
 import android.app.Fragment;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -9,8 +8,8 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.os.Build;
 
+import com.google.android.gms.maps.GoogleMap;
 
 
 public class MapActivity extends Activity {
@@ -51,12 +50,19 @@ public class MapActivity extends Activity {
      */
     public static class PlaceholderFragment extends Fragment {
 
+        private com.google.android.gms.maps.MapFragment mapFragment;
+        private GoogleMap googleMap;
+
         public PlaceholderFragment() {
         }
 
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
                 Bundle savedInstanceState) {
+            mapFragment = (com.google.android.gms.maps.MapFragment) getFragmentManager().findFragmentById(R.id.map);
+            googleMap = mapFragment.getMap();
+            //This can't be right, yet.
+            //TODO (Martin): Fix this
             View rootView = inflater.inflate(R.layout.fragment_map, container, false);
             return rootView;
         }

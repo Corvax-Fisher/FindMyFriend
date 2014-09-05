@@ -8,7 +8,7 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
         <activity
-            android:name=".MyActivity"
+            android:name=".ContactListActivity"
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -23,6 +23,12 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.example.fmi_fmf.MyActivity" />
         </activity>
+
+        <service
+            android:name=".FMFCommunicationService"
+            android:enabled="true"
+            android:exported="true" >
+        </service>
     </application>
 
 </manifest>

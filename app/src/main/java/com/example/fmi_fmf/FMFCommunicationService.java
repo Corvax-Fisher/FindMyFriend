@@ -1,16 +1,13 @@
 package com.example.fmi_fmf;
 
-import android.app.Activity;
 import android.app.ProgressDialog;
+import android.app.Service;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.location.LocationManager;
-import android.os.Bundle;
+import android.os.IBinder;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
-
-import com.google.android.gms.maps.GoogleMap;
 
 import org.jivesoftware.smack.ConnectionConfiguration;
 import org.jivesoftware.smack.PacketListener;
@@ -29,63 +26,48 @@ import org.jivesoftware.smack.util.StringUtils;
 import java.io.IOException;
 import java.util.Collection;
 
+public class FMFCommunicationService extends Service {
 
-public class MyActivity extends Activity {
+    private static final String LOG_TAG = "FMF_Communication_Service";
 
-    private static final String THIS_ACTIVITY = "FMF_Main_Activity";
+    private LocationManager mLocationManager;
+    private XMPPConnection mConnection;
 
-    private com.google.android.gms.maps.MapFragment mapFragment;
-    private GoogleMap googleMap;
-    private XMPPConnection connection;
-
-    private LocationManager locationManager;
+    public FMFCommunicationService() {
+    }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_my);
+    public IBinder onBind(Intent intent) {
+        // TODO: Return the communication channel to the service.
+        throw new UnsupportedOperationException("Not yet implemented");
+    }
 
-        SharedPreferences sharedPref = getPreferences(Context.MODE_PRIVATE);
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        SharedPreferences sharedPref = getSharedPreferences("credentials",Context.MODE_PRIVATE);
         String username = sharedPref.getString("username", "");
-        if(!username.isEmpty())
+        String password = sharedPref.getString("password", "");
+        if(!username.isEmpty() && !password.isEmpty())
         {
-            String password = sharedPref.getString("password", "");
             connect(username, password);
-            //TODO: create contact activity
-            //setContentView(R.layout.activity_contacts);
-            locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-            //Add LocationListener
         } else {
-            //TODO: create register/login-activity
-            //setContentView(R.layout.activity_register-login);
+            //TODO: create register-activity
+            //startActivity(new Intent(getBaseContext(),RegisterActivity.class));
         }
-
-        mapFragment = (com.google.android.gms.maps.MapFragment) getFragmentManager().findFragmentById(R.id.map);
-        googleMap = mapFragment.getMap();
-    }
-
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.my, menu);
-        return true;
+        mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        //Add LocationListener
+        return START_STICKY; //super.onStartCommand(intent, flags, startId);
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-        if (id == R.id.action_settings) {
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
+    public void onDestroy() {
+        super.onDestroy();
+        //disconnect
+        //remove Location Service
     }
 
     public void setConnection(XMPPConnection connection) {
-        this.connection = connection;
+        this.mConnection = connection;
         if (connection != null) {
             // Add a packet listener to get messages sent to us
             PacketFilter filter = new MessageTypeFilter(Message.Type.chat);
@@ -113,8 +95,8 @@ public class MyActivity extends Activity {
                         }
                         String fromName = StringUtils.parseBareAddress(message
                                 .getFrom());
-                        Log.i(THIS_ACTIVITY, "Text Recieved " + message.getBody()
-                                + " from " + fromName );
+                        Log.i(LOG_TAG, "Text Received " + message.getBody()
+                                + " from " + fromName);
 //						messages.add(fromName + ":");
 //						messages.add(message.getBody());
 //						// Add the incoming message to the list view
@@ -135,7 +117,7 @@ public class MyActivity extends Activity {
         String[] userAndHost = username.split("@");
         if(userAndHost.length != 2)
         {
-            Log.d(THIS_ACTIVITY, "Incorrect username. Cannot connect to Server.");
+            Log.d(LOG_TAG, "Incorrect username. Cannot connect to Server.");
             return;
         }
         final String host = userAndHost[1];
@@ -157,9 +139,9 @@ public class MyActivity extends Activity {
                     connection.connect();
 
                 } catch (XMPPException ex) {
-                    Log.e(THIS_ACTIVITY, "Failed to connect to "
+                    Log.e(LOG_TAG, "Failed to connect to "
                             + connection.getHost());
-                    Log.e(THIS_ACTIVITY, ex.toString());
+                    Log.e(LOG_TAG, ex.toString());
                     setConnection(null);
                 } catch (SmackException e) {
                     // TODO Auto-generated catch block
@@ -171,9 +153,9 @@ public class MyActivity extends Activity {
                 try {
                     // SASLAuthentication.supportSASLMechanism("PLAIN", 0);
                     connection.login(username, password);
-                    Log.i(THIS_ACTIVITY,
+                    Log.i(LOG_TAG,
                             "Connected to " + connection.getServiceName());
-                    Log.i(THIS_ACTIVITY,
+                    Log.i(LOG_TAG,
                             "Logged in as " + connection.getUser());
                     //addRosterListener(connection);
 
@@ -187,40 +169,40 @@ public class MyActivity extends Activity {
 
                     Collection<RosterEntry> entries = connection.getRoster().getEntries();
                     for (RosterEntry entry : entries) {
-                        Log.d(THIS_ACTIVITY,
+                        Log.d(LOG_TAG,
                                 "--------------------------------------");
-                        Log.d(THIS_ACTIVITY, "RosterEntry " + entry);
-                        Log.d(THIS_ACTIVITY,
+                        Log.d(LOG_TAG, "RosterEntry " + entry);
+                        Log.d(LOG_TAG,
                                 "User: " + entry.getUser());
-                        Log.d(THIS_ACTIVITY,
+                        Log.d(LOG_TAG,
                                 "Name: " + entry.getName());
-                        Log.d(THIS_ACTIVITY,
+                        Log.d(LOG_TAG,
                                 "Status: " + entry.getStatus());
-                        Log.d(THIS_ACTIVITY,
+                        Log.d(LOG_TAG,
                                 "Type: " + entry.getType());
                         Presence entryPresence = connection.getRoster().getPresence(entry
                                 .getUser());
 
-                        Log.d(THIS_ACTIVITY, "Presence Status: "
+                        Log.d(LOG_TAG, "Presence Status: "
                                 + entryPresence.getStatus());
-                        Log.d(THIS_ACTIVITY, "Presence Type: "
+                        Log.d(LOG_TAG, "Presence Type: "
                                 + entryPresence.getType());
                         Presence.Type type = entryPresence.getType();
                         if (type == Presence.Type.available)
-                            Log.d(THIS_ACTIVITY, "Presence AVIALABLE");
-                        Log.d(THIS_ACTIVITY, "Presence : "
+                            Log.d(LOG_TAG, "Presence AVIALABLE");
+                        Log.d(LOG_TAG, "Presence : "
                                 + entryPresence);
 
                     }
 
                 } catch (XMPPException ex) {
-                    Log.e(THIS_ACTIVITY, "Failed to log in as "
+                    Log.e(LOG_TAG, "Failed to log in as "
                             + username);
-                    Log.e(THIS_ACTIVITY, ex.toString());
+                    Log.e(LOG_TAG, ex.toString());
                     setConnection(null);
                 } catch (SmackException e) {
                     // TODO Auto-generated catch block
-                    Log.e(THIS_ACTIVITY, e.toString());
+                    Log.e(LOG_TAG, e.toString());
                     e.printStackTrace();
                 } catch (IOException e) {
                     // TODO Auto-generated catch block
