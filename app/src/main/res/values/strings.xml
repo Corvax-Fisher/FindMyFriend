@@ -6,5 +6,16 @@
     <string name="action_settings">Settings</string>
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="title_activity_map">MapActivity</string>
+    <string name="title_activity_maps">Map</string>
 
+    <string name="dialog_position_request">Möchtest du die Anfrage akzeptieren?</string>
+    <string name="accept">Ja</string>
+    <string name="accept_and_send_request">Ja und Gegenanfrage schicken</string>
+    <string name="decline">Nein</string>
+
+    <string-array name="request_choices">
+        <item >Ja</item>
+        <item >Ja + Gegenanfrage senden</item>
+        <item >Nein</item>
+    </string-array>
 </resources>
