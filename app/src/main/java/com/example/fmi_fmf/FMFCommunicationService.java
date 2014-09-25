@@ -54,8 +54,11 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     public static final String EXTRA_SEND_STOP = "send stop";
 
-    public static final String EXTRA_FRIEND_LOCATION = "friend location";
     public static final String UPDATE_FRIEND_LOCATION = "friend location update";
+    public static final String EXTRA_FRIEND_LOCATION = "friend location";
+
+    public static final String ACTION_REGISTER = "register";
+    public static final String EXTRA_PHONE_NUMBER = "phone number";
 
     public static final String INFO_CONNECTED = "connected info";
 
@@ -272,6 +275,11 @@ public class FMFCommunicationService extends Service implements LocationListener
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
 
+        if(intent.getAction().equals(ACTION_REGISTER))
+        {
+            String phoneNr = intent.getStringExtra(EXTRA_PHONE_NUMBER);
+            //TODO (Farah): register
+        }
         if(intent.hasExtra(EXTRA_SEND_STOP))
         {
             Toast.makeText(getApplicationContext(),"sending stop to "+intent.getStringExtra("send stop to"),Toast.LENGTH_SHORT).show();
