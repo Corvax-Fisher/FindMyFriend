@@ -89,8 +89,18 @@ public class ContactListActivity extends FragmentActivity
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_contact_list);
+
+        //TODO Farah: change this later,login activity nur wenn own ph number not in db
+
+
+        if(true){
+            startActivity(new Intent(this, RegistrationActivity.class));
+        }
+        else {
+            setContentView(R.layout.activity_contact_list);
+        }
 
         startService(new Intent(this,FMFCommunicationService.class));
 
@@ -226,4 +236,6 @@ public class ContactListActivity extends FragmentActivity
     public void onCancel() {
         if(mBound) mService.sendDecline(mRequesterJabberId,"Echter Name");
     }
+
+
 }

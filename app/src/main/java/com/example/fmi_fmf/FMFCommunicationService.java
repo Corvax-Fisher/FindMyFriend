@@ -4,10 +4,8 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.app.Service;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.location.Criteria;
 import android.location.Location;
@@ -43,8 +41,6 @@ import org.jivesoftware.smack.util.StringUtils;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
-import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -132,7 +128,7 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     public void sendAccept(String myFriendsJabberId, String myFriendsRealName) {
         if(ContactListActivity.D)
-            Toast.makeText(getApplicationContext(),"sending a accept to " + myFriendsRealName,Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(),"sending an accept to " + myFriendsRealName,Toast.LENGTH_SHORT).show();
 
         if(mAcceptedJabberIds == null) mAcceptedJabberIds = new ArrayList<String>();
         mAcceptedJabberIds.add(myFriendsJabberId);
