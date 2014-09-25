@@ -1,15 +1,18 @@
 package com.example.fmi_fmf;
 
 import android.app.Dialog;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Color;
-import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
-import android.support.v4.app.FragmentManager;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -19,6 +22,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PolylineOptions;
 
@@ -37,12 +41,42 @@ import java.util.List;
 public class MapsActivity extends FragmentActivity implements LocationListener {
 
     private GoogleMap mMap; // Might be null if Google Play services APK is not available.
-    ArrayList<LatLng> mMarkerPoints;
-    double mLatitude=0;
-    double mLongitude=0;
 
-    //TODO (Martin): a BroadcastReceiver has to be implemented here and
-    //TODO          the un/registerReceiver methods have to be invoked.
+    private Marker myLocationMarker;
+    private Marker friendLocationMarker;
+
+    BroadcastReceiver br = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if(intent.getAction().equals(FMFCommunicationService.UPDATE_FRIEND_LOCATION))
+            {
+                double locationExtra[] = intent.getDoubleArrayExtra(
+                        FMFCommunicationService.EXTRA_FRIEND_LOCATION );
+                LatLng point = new LatLng(locationExtra[0], locationExtra[1]);
+                if(friendLocationMarker == null)
+                {
+                    friendLocationMarker = mMap.addMarker(new MarkerOptions()
+                            .position(point)
+                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
+                            .draggable(false)
+                            .title("Ich"));
+                }
+                else friendLocationMarker.setPosition(point);
+
+                if(myLocationMarker != null)
+                {
+                    // Getting URL to the Google Directions API
+                    String url = getDirectionsUrl(myLocationMarker.getPosition(),
+                            friendLocationMarker.getPosition());
+
+                    DownloadTask downloadTask = new DownloadTask();
+
+                    // Start downloading json data from Google Directions API
+                    downloadTask.execute(url);
+                }
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,7 +96,6 @@ public class MapsActivity extends FragmentActivity implements LocationListener {
         }else { // Google Play Services are available
 
             // Initializing
-            mMarkerPoints = new ArrayList<LatLng>();
 
             // Getting reference to SupportMapFragment of the activity_main
             SupportMapFragment fm = (SupportMapFragment)getSupportFragmentManager().findFragmentById(R.id.map);
@@ -78,10 +111,10 @@ public class MapsActivity extends FragmentActivity implements LocationListener {
             LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
 
             // Creating a criteria object to retrieve provider
-            Criteria criteria = new Criteria();
+//            Criteria criteria = new Criteria();
 
             // Getting the name of the best provider
-            String provider = locationManager.getBestProvider(criteria, true);
+            String provider = LocationManager.PASSIVE_PROVIDER;// locationManager.getBestProvider(criteria, true);
 
             // Getting Current Location From GPS
             Location location = locationManager.getLastKnownLocation(provider);
@@ -90,44 +123,7 @@ public class MapsActivity extends FragmentActivity implements LocationListener {
                 onLocationChanged(location);
             }
 
-            locationManager.requestLocationUpdates(provider, 20000, 0, this);
-
-            //TODO (Martin): replace this onMapClickListener with an "onFriendLocationChangedListener"
-            //TODO This will technically be implemented by a BroadcastReceiver and an onReceive method.
-
-            // Setting onclick event listener for the map
-            mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
-
-                @Override
-                public void onMapClick(LatLng point) {
-
-                    // Already map contain destination location
-                    if(mMarkerPoints.size()>1){
-
-                        FragmentManager fm = getSupportFragmentManager();
-                        mMarkerPoints.clear();
-                        mMap.clear();
-                        LatLng startPoint = new LatLng(mLatitude, mLongitude);
-                        drawMarker(startPoint);
-                    }
-
-                    drawMarker(point);
-
-                    // Checks, whether start and end locations are captured
-                    if(mMarkerPoints.size() >= 2){
-                        LatLng origin = mMarkerPoints.get(0);
-                        LatLng dest = mMarkerPoints.get(1);
-
-                        // Getting URL to the Google Directions API
-                        String url = getDirectionsUrl(origin, dest);
-
-                        DownloadTask downloadTask = new DownloadTask();
-
-                        // Start downloading json data from Google Directions API
-                        downloadTask.execute(url);
-                    }
-                }
-            });
+            locationManager.requestLocationUpdates(provider, 0, 5, this);
         }
     }
 
@@ -135,6 +131,14 @@ public class MapsActivity extends FragmentActivity implements LocationListener {
     protected void onResume() {
         super.onResume();
         setUpMapIfNeeded();
+        LocalBroadcastManager.getInstance(this).registerReceiver(br,
+                new IntentFilter(FMFCommunicationService.UPDATE_FRIEND_LOCATION));
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(br);
     }
 
     /**
@@ -333,45 +337,34 @@ private class ParserTask extends AsyncTask<String, Integer, List<List<HashMap<St
 
 }
 
-    private void drawMarker(LatLng point){
-        mMarkerPoints.add(point);
-
-        // Creating MarkerOptions
-        MarkerOptions options = new MarkerOptions();
-
-        // Setting the position of the marker
-        options.position(point);
-
-        /**
-         * For the start location, the color of marker is GREEN and
-         * for the end location, the color of marker is RED.
-         */
-        if(mMarkerPoints.size()==1){
-            options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
-        }else if(mMarkerPoints.size()==2){
-            options.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED));
-        }
-
-        // Add new marker to the Google Map Android API V2
-        mMap.addMarker(options);
-    }
-
     @Override
     public void onLocationChanged(Location location) {
-        //TODO (Martin): Also draw the marker if the destination location is set
-        // Draw the marker, if destination location is not set
-        if(mMarkerPoints.size() < 2){
 
-            mLatitude = location.getLatitude();
-            mLongitude = location.getLongitude();
-            LatLng point = new LatLng(mLatitude, mLongitude);
-
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(point));
-            mMap.animateCamera(CameraUpdateFactory.zoomTo(12));
-
-            drawMarker(point);
+        LatLng point = new LatLng(location.getLatitude(), location.getLongitude());
+        if(myLocationMarker == null)
+        {
+            myLocationMarker = mMap.addMarker(new MarkerOptions()
+                    .position(point)
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
+                    .draggable(false)
+                    .title("Ich"));
         }
+        else myLocationMarker.setPosition(point);
 
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(point));
+        mMap.animateCamera(CameraUpdateFactory.zoomTo(12));
+
+        if(friendLocationMarker != null)
+        {
+            // Getting URL to the Google Directions API
+            String url = getDirectionsUrl(myLocationMarker.getPosition(),
+                    friendLocationMarker.getPosition());
+
+            DownloadTask downloadTask = new DownloadTask();
+
+            // Start downloading json data from Google Directions API
+            downloadTask.execute(url);
+        }
     }
 
     @Override

@@ -18,4 +18,11 @@
         <item >Ja + Gegenanfrage senden</item>
         <item >Nein</item>
     </string-array>
+
+    <string name="title_no_provider_enabled">Standort nicht verfügbar</string>
+    <string name="message_no_provider_enabled">Diese App benötigt deinen Standort.\nMöchtest du ihn jetzt freigeben?\n(Standort-Menü öffnet sich)</string>
+
+    <string name="title_not_connected">Keine Verbindung</string>
+    <string name="message_not_connected">Du bist nicht verbunden.\nAnfrage kann nicht gesendet werden.</string>
+
 </resources>

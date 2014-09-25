@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.app.FragmentActivity;
@@ -16,7 +17,13 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.Toast;
+
+import org.jivesoftware.smack.RosterEntry;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Dictionary;
+import java.util.HashMap;
 
 
 public class ContactListActivity extends FragmentActivity
@@ -27,34 +34,43 @@ public class ContactListActivity extends FragmentActivity
 
     public static final String ACTION_CANCEL_WAIT_PROGRESS = "cancel wait progress";
     public static final String ACTION_SHOW_REQUEST_DIALOG = "show request dialog";
+    public static final String ACTION_SHOW_DECLINE_DIALOG = "show decline dialog";
     public static final String ACTION_OPEN_MAP = "open map";
-    public static final String EXTRA_JABBER_ID = "jabber id";
+    public static final String EXTRA_FULL_NAME = "full name";
 
     public static boolean isActive = false;
-    private ProgressDialog mProgDlg;
+    private ProgressDialog mProgressDialog;
     private PositionRequestDialogFragment mRequestDialog;
+    private NoProviderDialogFragment mNoProviderDialog;
+    private AlertDialog mNotConnectedAlert;
+
+    ArrayList<FMFListEntry> mJabberIdToRealName;
+
     private String mRequesterJabberId;
 
     private BroadcastReceiver br = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if(D) Log.d(LOG_TAG, "broadcast received");
-            if(intent.getAction().equals(ACTION_CANCEL_WAIT_PROGRESS))
-            {
-                mProgDlg.dismiss();
+            if(intent.getAction().equals(ACTION_CANCEL_WAIT_PROGRESS)) {
+                mProgressDialog.dismiss();
 //                Toast.makeText(getBaseContext(), "Friend didn't answer.\nrequest timed out",
 //                        Toast.LENGTH_SHORT).show();
                 AlertDialog.Builder builder = new AlertDialog.Builder(ContactListActivity.this);
                 builder.setMessage("Friend didn't answer.\nTry again later.");
                 AlertDialog pauseDialog = builder.create();
                 pauseDialog.show();
-            } else if(intent.getAction().equals(ACTION_SHOW_REQUEST_DIALOG))
-            {
+            } else if(intent.getAction().equals(ACTION_SHOW_REQUEST_DIALOG)) {
                 if(mRequestDialog == null) mRequestDialog = new PositionRequestDialogFragment();
                 if(!mRequestDialog.isVisible())
                 {
-                    mRequesterJabberId = intent.getStringExtra(EXTRA_JABBER_ID);
+                    mRequesterJabberId = intent.getStringExtra(EXTRA_FULL_NAME);
                     mRequestDialog.show(getSupportFragmentManager(), PositionRequestDialogFragment.class.getSimpleName());
+                }
+            } else if(intent.getAction().equals(FMFCommunicationService.INFO_CONNECTED)) {
+                if(mBound) {
+                    mJabberIdToRealName = new ArrayList<FMFListEntry>();
+                    mService.fillInJabberIdAndStatus(mJabberIdToRealName);
                 }
             }
             //TODO (Martin):when user logged in set mLoggedIn = true, check roster presences
@@ -73,8 +89,11 @@ public class ContactListActivity extends FragmentActivity
             FMFCommunicationService.LocalBinder binder = (FMFCommunicationService.LocalBinder) service;
             mService = binder.getService();
             mBound = true;
-            if(mService.isProviderAvailable())
-                Toast.makeText(ContactListActivity.this, "Provider is available", Toast.LENGTH_SHORT).show();
+            if(!mService.isProviderAvailable())
+            {
+                if(mNoProviderDialog == null) mNoProviderDialog = new NoProviderDialogFragment();
+                mNoProviderDialog.show(getSupportFragmentManager(), "No Provider Dialog");
+            }
             FMFCommunicationService.N_INFO notificationInfo = mService.getNotificationInfo();
             if(notificationInfo == FMFCommunicationService.N_INFO.ACCEPT)
                 startActivity(new Intent(ContactListActivity.this,MapsActivity.class));
@@ -104,23 +123,26 @@ public class ContactListActivity extends FragmentActivity
 
     //@Farah: call this method, when the user clicked on a contact in the contact list view.
     private void onContactClicked(String contactsJabberId, String contactsFullName){
-        if(mProgDlg==null) mProgDlg = new ProgressDialog(this);
-        mProgDlg.setMessage("Waiting for friends answer...");
-        mProgDlg.setIndeterminate(true);
-        mProgDlg.show();
-//        mServiceIntent
-//                .replaceExtras((Bundle) null)
-//                .putExtra("send request to", contactsJabberId);
-//        startService(mServiceIntent);
-//        mServiceIntent
-//                .replaceExtras((Bundle) null)
-//                .setAction("start timer");
-//        startService(mServiceIntent);
         if(mBound){
             FMFCommunicationService.RET_CODE ret = mService.sendRequest(contactsJabberId,contactsFullName);
             if(ret == FMFCommunicationService.RET_CODE.NO_PROVIDER)
             {
-                //TODO (Martin): show alert: no provider available. do you want to activate a provider?
+                if(mNoProviderDialog == null) mNoProviderDialog = new NoProviderDialogFragment();
+                mNoProviderDialog.show(getSupportFragmentManager(), "No Provider Dialog");
+            } else if(ret == FMFCommunicationService.RET_CODE.NOT_CONNECTED) {
+                if(mNotConnectedAlert == null)
+                {
+                    mNotConnectedAlert = new AlertDialog.Builder(this)
+                            .setTitle(R.string.title_not_connected)
+                            .setMessage(R.string.message_not_connected)
+                            .create();
+                }
+                mNotConnectedAlert.show();
+            } else if(ret == FMFCommunicationService.RET_CODE.OK) {
+                if(mProgressDialog ==null) mProgressDialog = new ProgressDialog(this);
+                mProgressDialog.setMessage("Auf Antwort warten...");
+                mProgressDialog.setIndeterminate(true);
+                mProgressDialog.show();
             }
         }
     }
@@ -158,7 +180,7 @@ public class ContactListActivity extends FragmentActivity
         {
             if(senderIntent.getAction().equals(ACTION_SHOW_REQUEST_DIALOG))
             {
-                mRequesterJabberId = senderIntent.getStringExtra(EXTRA_JABBER_ID);
+                mRequesterJabberId = senderIntent.getStringExtra(EXTRA_FULL_NAME);
                 if(mRequestDialog == null) mRequestDialog = new PositionRequestDialogFragment();
                 mRequestDialog.show(getSupportFragmentManager(), PositionRequestDialogFragment.class.getSimpleName());
             } else if(senderIntent.getAction().equals(ACTION_OPEN_MAP)) {
@@ -198,8 +220,10 @@ public class ContactListActivity extends FragmentActivity
     protected void onResume() {
         super.onResume();
         if (D) Log.d(LOG_TAG, "onResume");
-        LocalBroadcastManager.getInstance(this).registerReceiver(br, new IntentFilter(ACTION_CANCEL_WAIT_PROGRESS));
-        LocalBroadcastManager.getInstance(this).registerReceiver(br, new IntentFilter(ACTION_SHOW_REQUEST_DIALOG));
+        LocalBroadcastManager.getInstance(this).registerReceiver(br,
+                new IntentFilter(ACTION_CANCEL_WAIT_PROGRESS));
+        LocalBroadcastManager.getInstance(this).registerReceiver(br,
+                new IntentFilter(ACTION_SHOW_REQUEST_DIALOG));
         //TODO (Martin): add receiver for logged in info
     }
 
@@ -225,5 +249,27 @@ public class ContactListActivity extends FragmentActivity
     @Override
     public void onCancel() {
         if(mBound) mService.sendDecline(mRequesterJabberId,"Echter Name");
+    }
+
+    private class DataBaseLookupTask extends AsyncTask< Void, Void, Void > {
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            for(FMFListEntry listEntry : mJabberIdToRealName)
+            {
+                //TODO (Farah): lookup listEntry in database
+                //TODO  if entry found set the real name of the list entry
+                //listEntry.realName = ...
+                //TODO may do this task for each entry one by one
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+
+            //TODO set the list adapter
+        }
     }
 }

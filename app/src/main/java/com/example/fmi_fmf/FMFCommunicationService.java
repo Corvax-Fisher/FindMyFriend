@@ -4,10 +4,10 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.app.Service;
-import android.content.ComponentName;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.ServiceConnection;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.location.Criteria;
 import android.location.Location;
@@ -17,7 +17,6 @@ import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
-import android.support.v4.app.TaskStackBuilder;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.widget.Toast;
@@ -29,6 +28,7 @@ import org.jivesoftware.smack.ConnectionConfiguration;
 import org.jivesoftware.smack.MessageListener;
 import org.jivesoftware.smack.PacketListener;
 import org.jivesoftware.smack.RosterEntry;
+import org.jivesoftware.smack.RosterListener;
 import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
@@ -43,8 +43,6 @@ import org.jivesoftware.smack.util.StringUtils;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
-import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -55,6 +53,11 @@ public class FMFCommunicationService extends Service implements LocationListener
     private final long REQUEST_TIMEOUT = 10000L; // 10 seconds
 
     public static final String EXTRA_SEND_STOP = "send stop";
+
+    public static final String EXTRA_FRIEND_LOCATION = "friend location";
+    public static final String UPDATE_FRIEND_LOCATION = "friend location update";
+
+    public static final String INFO_CONNECTED = "connected info";
 
     public enum RET_CODE {OK, NO_PROVIDER, NOT_CONNECTED};
     public enum N_INFO {NONE, REQUEST, ACCEPT};
@@ -80,8 +83,34 @@ public class FMFCommunicationService extends Service implements LocationListener
     };
     private String mCurrentLocation;
 
-    public FMFCommunicationService() {
-    }
+    private BroadcastReceiver br = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if(intent.getAction().equals(LocationManager.PROVIDERS_CHANGED_ACTION))
+            {
+                if(ContactListActivity.D)
+                    Toast.makeText(FMFCommunicationService.this,"Providers changed",Toast.LENGTH_SHORT).show();
+                // Creating a criteria object to retrieve provider
+                Criteria criteria = new Criteria();
+                criteria.setAccuracy(Criteria.ACCURACY_FINE);
+                // Getting the name of the best provider
+                String bestProvider = mLocationManager.getBestProvider(criteria, true);
+                if(bestProvider == null && mProvider != null)
+                    mLocationManager.removeUpdates(FMFCommunicationService.this);
+                 else if(mProvider == null) {
+                    if(bestProvider != null)
+                        mLocationManager.requestLocationUpdates(bestProvider, 0, 5, FMFCommunicationService.this);
+                } else if(!mProvider.equals(bestProvider)) {
+                    mLocationManager.removeUpdates(FMFCommunicationService.this);
+                    mLocationManager.requestLocationUpdates(bestProvider, 0, 5, FMFCommunicationService.this);
+                }
+                mProvider = bestProvider;
+            }
+        }
+    };
+
+//    public FMFCommunicationService() {
+//    }
 
     /**
      * Class used for the client Binder.  Because we know this service always
@@ -99,23 +128,44 @@ public class FMFCommunicationService extends Service implements LocationListener
         return mBinder;
     }
 
-    @Override
-    public boolean onUnbind(Intent intent) {
-        if(ContactListActivity.D)
-            Toast.makeText(getApplicationContext(),"unbinding service...",Toast.LENGTH_SHORT).show();
-        return super.onUnbind(intent);
-    }
+//    @Override
+//    public boolean onUnbind(Intent intent) {
+//        if(ContactListActivity.D)
+//            Toast.makeText(getApplicationContext(),"unbinding service...",Toast.LENGTH_SHORT).show();
+//        return super.onUnbind(intent);
+//    }
 
     /** methods for clients */
     public boolean isProviderAvailable() {
         return mProvider != null;
     }
 
+    public void fillInJabberIdAndStatus(ArrayList<FMFListEntry> listEntries) {
+        if(mConnection.isAuthenticated()) {
+            Collection<RosterEntry> rosterEntries = mConnection.getRoster().getEntries();
+            FMFListEntry listEntry = new FMFListEntry();
+            for(RosterEntry rosterEntry: rosterEntries){
+                listEntry.jabberID = rosterEntry.getUser();
+                Presence p = mConnection.getRoster().getPresence(rosterEntry.getUser());
+                if(p.getType() == Presence.Type.available)
+                    listEntry.status = FMFListEntry.ONLINE;
+                else
+                    listEntry.status = FMFListEntry.OFFLINE;
+                listEntries.add(listEntry);
+            }
+        }
+    }
+
+    public void addRosterListener(RosterListener rosterListener)
+    {
+        if(mConnection.isAuthenticated()) mConnection.getRoster().addRosterListener(rosterListener);
+    }
+
     public RET_CODE sendRequest(String myFriendsJabberId, String myFriendsRealName) {
         if(mProvider == null) return RET_CODE.NO_PROVIDER;
-        if(!mConnection.isConnected()) return RET_CODE.NOT_CONNECTED;
+        if(!mConnection.isAuthenticated()) return RET_CODE.NOT_CONNECTED;
         if(ContactListActivity.D)
-            Toast.makeText(getApplicationContext(),"sending a request to " + myFriendsRealName,Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,"sending a request to " + myFriendsRealName,Toast.LENGTH_SHORT).show();
         mReceiverChat = mChatManager.createChat(myFriendsJabberId,mChatMessageListener);
         try {
             mReceiverChat.sendMessage("P");
@@ -211,8 +261,12 @@ public class FMFCommunicationService extends Service implements LocationListener
                 onLocationChanged(location);
             }
 
-            mLocationManager.requestLocationUpdates(mProvider, 0, 0, this);
-        }
+            mLocationManager.requestLocationUpdates(mProvider, 0, 5, this);
+        } /*else {
+            mLocationManager.requestSingleUpdate(LocationManager.NETWORK_PROVIDER,this,null);
+            mLocationManager.requestSingleUpdate(LocationManager.GPS_PROVIDER,this,null);
+        }*/
+        registerReceiver(br, new IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION));
     }
 
     @Override
@@ -240,6 +294,7 @@ public class FMFCommunicationService extends Service implements LocationListener
         super.onDestroy();
         //disconnect
         //remove Location Service
+        unregisterReceiver(br);
     }
 
     private Chat findSenderChat(String jabberId){
@@ -257,7 +312,7 @@ public class FMFCommunicationService extends Service implements LocationListener
         if(ContactListActivity.isActive)
         {
             Intent i = new Intent(ContactListActivity.ACTION_SHOW_REQUEST_DIALOG);
-            i.putExtra(ContactListActivity.EXTRA_JABBER_ID,fullName);
+            i.putExtra(ContactListActivity.EXTRA_FULL_NAME,fullName);
             LocalBroadcastManager.getInstance(FMFCommunicationService.this).sendBroadcast(i);
         }
         else
@@ -269,12 +324,10 @@ public class FMFCommunicationService extends Service implements LocationListener
 
             Intent resultIntent = new Intent(this,ContactListActivity.class);
             resultIntent.setAction(ContactListActivity.ACTION_SHOW_REQUEST_DIALOG)
-                    .putExtra(ContactListActivity.EXTRA_JABBER_ID,fullName);
+                    .putExtra(ContactListActivity.EXTRA_FULL_NAME,fullName);
 
-            TaskStackBuilder tsb = TaskStackBuilder.create(this);
-            tsb.addParentStack(ContactListActivity.class);
-            tsb.addNextIntent(resultIntent);
-            PendingIntent resPI = tsb.getPendingIntent(0,PendingIntent.FLAG_UPDATE_CURRENT);
+            PendingIntent resPI = PendingIntent.getActivity(
+                    FMFCommunicationService.this, 0, resultIntent, PendingIntent.FLAG_UPDATE_CURRENT);
             ncb.setContentIntent(resPI);
             mNotificationManager.notify(1337,ncb.build());
         }
@@ -301,24 +354,40 @@ public class FMFCommunicationService extends Service implements LocationListener
         }
     }
 
+    private void notifyAboutDecline(String fullName) {
+        if (ContactListActivity.isActive) {
+            Intent i = new Intent(ContactListActivity.ACTION_SHOW_DECLINE_DIALOG);
+            i.putExtra(ContactListActivity.EXTRA_FULL_NAME, fullName);
+            LocalBroadcastManager.getInstance(FMFCommunicationService.this).sendBroadcast(i);
+        } else {
+            NotificationCompat.Builder ncb = new NotificationCompat.Builder(FMFCommunicationService.this)
+                    .setSmallIcon(R.drawable.ic_launcher)
+                    .setContentTitle("Positionsanfrage")
+                    .setContentText(fullName + " hat deine Anfrage abgelehnt.");
+
+            Intent resultIntent = new Intent(FMFCommunicationService.this, ContactListActivity.class);
+            resultIntent.setAction(ContactListActivity.ACTION_OPEN_MAP);
+
+            PendingIntent resPI = PendingIntent.getActivity(
+                    FMFCommunicationService.this, 0, resultIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+            ncb.setContentIntent(resPI);
+            mNotificationManager.notify(1337, ncb.build());
+        }
+    }
+
     private MessageListener mChatMessageListener = new MessageListener() {
 
         @Override
         public void processMessage(Chat chat, Message message) {
             if(message.getBody().equals("P")) {
                 //Position request
+                //TODO: resolve the real name from the jabberID
                 notifyAboutRequest("Rene Request");
                 mNotificationInfo = N_INFO.REQUEST;
-                mLocationManager.requestLocationUpdates(mProvider,0,0,FMFCommunicationService.this);
-                //TODO: check if requester is in contact list
-                // if requester is not in contact list, reply with "N"
-                // else reply with location and put requester into an ArrayList<String>
-                //   to automatically send location updates to this requester
-                //   (the requester will be removed when his status doesn't contain ":M" anymore)
+                mLocationManager.requestLocationUpdates(mProvider,0,5,FMFCommunicationService.this);
             } else if(message.getBody().equals("N")) {
                 //Position request rejected
-                //TODO: Let a Dialog Pop up that says:
-                // %Name hat sie nicht in der Kontaktliste. Standort kann nicht �bermittelt werden.
+                notifyAboutDecline("Dexter Decline");
             } else if(message.getBody().equals("S")) {
                 //Stop sending location updates to sender by removing him from the ArrayList
                 mAcceptedJabberIds.remove(chat.getParticipant());
@@ -330,10 +399,16 @@ public class FMFCommunicationService extends Service implements LocationListener
                     mNotificationInfo = N_INFO.ACCEPT;
             } else {
                 // Lat Lon coordinates should be received
-                //TODO: update google map route
-                //This will be realised by sending a local broadcast message and
-                //letting the map activity receive it.
-                //For this, the LocalBroadcastManager will be used.
+                String strLatLng[] = message.getBody().split(":");
+                if(strLatLng.length == 2) // Lat Lon coordinates received
+                {
+                    double dLatLng[] = {    Double.parseDouble(strLatLng[0]),
+                                            Double.parseDouble(strLatLng[1])
+                    };
+                    Intent i = new Intent(UPDATE_FRIEND_LOCATION)
+                            .putExtra(EXTRA_FRIEND_LOCATION,dLatLng);
+                    LocalBroadcastManager.getInstance(FMFCommunicationService.this).sendBroadcast(i);
+                }
             }
         }
     };
@@ -442,6 +517,7 @@ public class FMFCommunicationService extends Service implements LocationListener
                             "Logged in as " + connection.getUser());
                     //addRosterListener(connection);
 
+                    //TODO (Martin): send Presence unavailable when mProvider == null
                     // Set the status to available
                     Presence presence = new Presence(Presence.Type.available);
                     presence.setMode(Presence.Mode.available);
@@ -450,8 +526,10 @@ public class FMFCommunicationService extends Service implements LocationListener
 
                     setConnection(connection);
 
-                    //TODO (Martin): broadcast that the user is logged in
+                    Intent i = new Intent(INFO_CONNECTED);
+                    LocalBroadcastManager.getInstance(FMFCommunicationService.this).sendBroadcast(i);
 
+                    //TODO (Martin): remove this code sequence
                     Collection<RosterEntry> entries = connection.getRoster().getEntries();
                     for (RosterEntry entry : entries) {
                         Log.d(LOG_TAG,
@@ -504,6 +582,7 @@ public class FMFCommunicationService extends Service implements LocationListener
     @Override
     public void onLocationChanged(Location location) {
         mCurrentLocation = location.getLatitude()+":"+location.getLongitude();
+        Toast.makeText(this,mCurrentLocation,Toast.LENGTH_SHORT).show();
         if(mAcceptedJabberIds != null)
         {
             Chat chat;
@@ -523,26 +602,19 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     @Override
     public void onStatusChanged(String provider, int status, Bundle extras) {
-
+        if(ContactListActivity.D)
+            Toast.makeText(this,"onStatusChanged",Toast.LENGTH_SHORT).show();
     }
 
     @Override
     public void onProviderEnabled(String provider) {
-        // Creating a criteria object to retrieve provider
-        Criteria criteria = new Criteria();
-        criteria.setAccuracy(Criteria.ACCURACY_FINE);
-        // Getting the name of the best provider
-        String bestProvider = mLocationManager.getBestProvider(criteria, true);
-        if(!mProvider.equals(bestProvider))
-        {
-            mLocationManager.removeUpdates(this);
-            mProvider = bestProvider;
-            mLocationManager.requestLocationUpdates(mProvider, 0, 0, this);
-        }
     }
 
     @Override
     public void onProviderDisabled(String provider) {
+        //TODO (Martin): this might be obsolete because we're receiving PROVIDERS_CHANGED_ACTION
+        if(ContactListActivity.D)
+            Toast.makeText(this,"onProviderDisabled",Toast.LENGTH_SHORT).show();
         if(provider.equals(mProvider))
         {
             mLocationManager.removeUpdates(this);
@@ -554,7 +626,7 @@ public class FMFCommunicationService extends Service implements LocationListener
 
             // Getting Current Location From GPS
             if(mProvider != null)
-                mLocationManager.requestLocationUpdates(mProvider, 0, 0, this);
+                mLocationManager.requestLocationUpdates(mProvider, 0, 5, this);
         }
     }
 }
