@@ -182,7 +182,7 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     public void sendAccept(String myFriendsJabberId, String myFriendsRealName) {
         if(ContactListActivity.D)
-            Toast.makeText(getApplicationContext(),"sending a accept to " + myFriendsRealName,Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(),"sending an accept to " + myFriendsRealName,Toast.LENGTH_SHORT).show();
 
         if(mAcceptedJabberIds == null) mAcceptedJabberIds = new ArrayList<String>();
         mAcceptedJabberIds.add(myFriendsJabberId);

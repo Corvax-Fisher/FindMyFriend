@@ -3,20 +3,20 @@
 
     <string name="app_name">Find My Friend</string>
     <string name="hello_world">Hello world!</string>
+    <string name="hello_login">Handynummer</string>
     <string name="action_settings">Settings</string>
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="title_activity_map">MapActivity</string>
     <string name="title_activity_maps">Map</string>
-
     <string name="dialog_position_request">Möchtest du die Anfrage akzeptieren?</string>
     <string name="accept">Ja</string>
     <string name="accept_and_send_request">Ja und Gegenanfrage schicken</string>
     <string name="decline">Nein</string>
 
     <string-array name="request_choices">
-        <item >Ja</item>
-        <item >Ja + Gegenanfrage senden</item>
-        <item >Nein</item>
+        <item>Ja</item>
+        <item>Ja + Gegenanfrage senden</item>
+        <item>Nein</item>
     </string-array>
 
     <string name="title_no_provider_enabled">Standort nicht verfügbar</string>
@@ -25,4 +25,11 @@
     <string name="title_not_connected">Keine Verbindung</string>
     <string name="message_not_connected">Du bist nicht verbunden.\nAnfrage kann nicht gesendet werden.</string>
 
+
+    <string name="title_activity_registration">RegistrationActivity</string>
+    <string name="edit_number">+491234567890</string>
+    <string name="button_weiter">Weiter</string>
+    <string name="button_reg">Registrieren</string>
+    <string name="textTypeNumber">Bitte gebe Deine Handynummer ein.</string>
+    <string name="textVerifyNumber">Ein Verifizierungscode wird dir per SMS zugesendet. Bitte hier eingeben:</string>
 </resources>
