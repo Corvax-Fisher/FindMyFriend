@@ -278,6 +278,7 @@ public class FMFCommunicationService extends Service implements LocationListener
         if(intent.getAction().equals(ACTION_REGISTER))
         {
             String phoneNr = intent.getStringExtra(EXTRA_PHONE_NUMBER);
+            Log.d("Phone Number", phoneNr);
             //TODO (Farah): register
         }
         if(intent.hasExtra(EXTRA_SEND_STOP))

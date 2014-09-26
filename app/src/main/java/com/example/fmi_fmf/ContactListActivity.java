@@ -18,12 +18,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
-import org.jivesoftware.smack.RosterEntry;
-
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Dictionary;
-import java.util.HashMap;
 
 
 public class ContactListActivity extends FragmentActivity
@@ -121,7 +116,7 @@ public class ContactListActivity extends FragmentActivity
             setContentView(R.layout.activity_contact_list);
         }
 
-        startService(new Intent(this,FMFCommunicationService.class));
+        //this.startService(new Intent(this,FMFCommunicationService.class));
 
         /* TODO (Farah):
          * - Implement a custom ListAdapter with attributes like contactName, status(, etc.?)

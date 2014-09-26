@@ -85,12 +85,11 @@ public class RegistrationActivity extends Activity {
         EditText codeNo = (EditText) findViewById(R.id.code_no);
 
         if (String.valueOf(codeNo.getText()).equals(String.valueOf(pin))) {
-            Log.d("Code farah","true");
             EditText mobileNo = (EditText) findViewById(R.id.mobile_no);
             Intent i = new Intent(this,FMFCommunicationService.class)
                     .setAction(FMFCommunicationService.ACTION_REGISTER)
                     .putExtra(FMFCommunicationService.EXTRA_PHONE_NUMBER,mobileNo.getText().toString());
-            startService(i);
+            this.startService(i);
         }
         else {
             Log.d("Code farah","false");
