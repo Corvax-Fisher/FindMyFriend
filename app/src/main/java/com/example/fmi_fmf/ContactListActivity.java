@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -32,6 +33,7 @@ public class ContactListActivity extends FragmentActivity
     public static final String ACTION_SHOW_DECLINE_DIALOG = "show decline dialog";
     public static final String ACTION_OPEN_MAP = "open map";
     public static final String EXTRA_FULL_NAME = "full name";
+    public static final String EXTRA_PHONE_NUMBER = "phone number";
 
     public static boolean isActive = false;
     private ProgressDialog mProgressDialog;
@@ -107,16 +109,19 @@ public class ContactListActivity extends FragmentActivity
         super.onCreate(savedInstanceState);
 
         //TODO Farah: change this later,login activity nur wenn own ph number not in db
+        SharedPreferences sharedPref = getSharedPreferences("credentials",Context.MODE_PRIVATE);
+        String numberSaved = sharedPref.getString(EXTRA_PHONE_NUMBER,"");
+        Log.d("test",numberSaved);
 
-
-        if(true){
+        if(numberSaved == ""){
             startActivity(new Intent(this, RegistrationActivity.class));
         }
         else {
             setContentView(R.layout.activity_contact_list);
+            //this.startService(new Intent(this,FMFCommunicationService.class));
         }
 
-        //this.startService(new Intent(this,FMFCommunicationService.class));
+
 
         /* TODO (Farah):
          * - Implement a custom ListAdapter with attributes like contactName, status(, etc.?)

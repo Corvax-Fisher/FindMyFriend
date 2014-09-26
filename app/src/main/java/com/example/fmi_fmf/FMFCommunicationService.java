@@ -235,16 +235,7 @@ public class FMFCommunicationService extends Service implements LocationListener
 
         mNotificationInfo = N_INFO.NONE;
 
-        SharedPreferences sharedPref = getSharedPreferences("credentials",Context.MODE_PRIVATE);
-        String username = sharedPref.getString("username", "");
-        String password = sharedPref.getString("password", "");
-        if(!username.isEmpty() && !password.isEmpty())
-        {
-            connect(username, password);
-        } else {
-            //TODO: create register-activity
-            //startActivity(new Intent(this,RegisterActivity.class));
-        }
+
         mLocationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         //Add LocationListener
@@ -279,7 +270,19 @@ public class FMFCommunicationService extends Service implements LocationListener
         {
             String phoneNr = intent.getStringExtra(EXTRA_PHONE_NUMBER);
             Log.d("Phone Number", phoneNr);
-            //TODO (Farah): register
+
+            SharedPreferences sharedPref = getSharedPreferences("credentials",Context.MODE_PRIVATE);
+            String username = sharedPref.getString("username", "");
+            String password = sharedPref.getString("password", "");
+            if(!username.isEmpty() && !password.isEmpty())
+            {
+                connect(username, password);
+            } else {
+                //TODO: create register-activity
+                SharedPreferences.Editor editor = sharedPref.edit();
+                editor.putString(EXTRA_PHONE_NUMBER, phoneNr);
+                editor.commit();
+            }
         }
         if(intent.hasExtra(EXTRA_SEND_STOP))
         {
