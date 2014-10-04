@@ -51,7 +51,7 @@
         android:id="@+id/button2"
         android:layout_below="@+id/code_no"
         android:layout_centerHorizontal="true"
-        android:onClick="compareNumber" />
+        android:onClick="compareCode" />
 
     <EditText
         android:layout_width="wrap_content"

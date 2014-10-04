@@ -60,6 +60,9 @@ public class FMFCommunicationService extends Service implements LocationListener
     public static final String ACTION_REGISTER = "register";
     public static final String EXTRA_PHONE_NUMBER = "phone number";
 
+    public static final String USERNAME = "username";
+    public static final String PASSWORD = "password";
+
     public static final String INFO_CONNECTED = "connected info";
 
     public enum RET_CODE {OK, NO_PROVIDER, NOT_CONNECTED};
@@ -92,7 +95,7 @@ public class FMFCommunicationService extends Service implements LocationListener
             if(intent.getAction().equals(LocationManager.PROVIDERS_CHANGED_ACTION))
             {
                 if(ContactListActivity.D)
-                    Toast.makeText(FMFCommunicationService.this,"Providers changed",Toast.LENGTH_SHORT).show();
+                    Toast.makeText(FMFCommunicationService.this,"Providers geändert",Toast.LENGTH_SHORT).show();
                 // Creating a criteria object to retrieve provider
                 Criteria criteria = new Criteria();
                 criteria.setAccuracy(Criteria.ACCURACY_FINE);
@@ -168,7 +171,7 @@ public class FMFCommunicationService extends Service implements LocationListener
         if(mProvider == null) return RET_CODE.NO_PROVIDER;
         if(!mConnection.isAuthenticated()) return RET_CODE.NOT_CONNECTED;
         if(ContactListActivity.D)
-            Toast.makeText(this,"sending a request to " + myFriendsRealName,Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,"Anfrage wird gesendet an " + myFriendsRealName,Toast.LENGTH_SHORT).show();
         mReceiverChat = mChatManager.createChat(myFriendsJabberId,mChatMessageListener);
         try {
             mReceiverChat.sendMessage("P");
@@ -185,7 +188,7 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     public void sendAccept(String myFriendsJabberId, String myFriendsRealName) {
         if(ContactListActivity.D)
-            Toast.makeText(getApplicationContext(),"sending an accept to " + myFriendsRealName,Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(),"Zustimmung wird gesendet an " + myFriendsRealName,Toast.LENGTH_SHORT).show();
 
         if(mAcceptedJabberIds == null) mAcceptedJabberIds = new ArrayList<String>();
         mAcceptedJabberIds.add(myFriendsJabberId);
@@ -209,7 +212,7 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     public void sendDecline(String myFriendsJabberId, String myFriendsRealName) {
         if(ContactListActivity.D)
-            Toast.makeText(getApplicationContext(),"sending decline to " + myFriendsRealName,Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(),"Absage wird gesendet an " + myFriendsRealName,Toast.LENGTH_SHORT).show();
 
         Chat chat = findSenderChat(myFriendsJabberId);
         if(chat != null) try {
@@ -231,7 +234,7 @@ public class FMFCommunicationService extends Service implements LocationListener
     public void onCreate() {
         super.onCreate();
 
-        if(ContactListActivity.D) Log.d(LOG_TAG,"Service created");
+        if(ContactListActivity.D) Log.d(LOG_TAG,"Service gestartet");
 
         mNotificationInfo = N_INFO.NONE;
 
@@ -271,17 +274,26 @@ public class FMFCommunicationService extends Service implements LocationListener
             String phoneNr = intent.getStringExtra(EXTRA_PHONE_NUMBER);
             Log.d("Phone Number", phoneNr);
 
-            SharedPreferences sharedPref = getSharedPreferences("credentials",Context.MODE_PRIVATE);
-            String username = sharedPref.getString("username", "");
-            String password = sharedPref.getString("password", "");
+            SharedPreferences sharedPref = getSharedPreferences("FMFNumbers",Context.MODE_PRIVATE);
+
+            SharedPreferences.Editor editor = sharedPref.edit();
+            editor.putString(EXTRA_PHONE_NUMBER, phoneNr);
+            editor.commit();
+
+            String username = sharedPref.getString(USERNAME, "");
+            String password = sharedPref.getString(PASSWORD, "");
+
             if(!username.isEmpty() && !password.isEmpty())
             {
                 connect(username, password);
             } else {
-                //TODO: create register-activity
-                SharedPreferences.Editor editor = sharedPref.edit();
-                editor.putString(EXTRA_PHONE_NUMBER, phoneNr);
-                editor.commit();
+                String genpass = generatePassword().toString();
+                String genuser = "fmi"+phoneNr.toString();
+
+                SharedPreferences.Editor user_pass_editor = sharedPref.edit();
+                user_pass_editor.putString(USERNAME, genuser);
+                user_pass_editor.putString(PASSWORD, genpass);
+                user_pass_editor.commit();
             }
         }
         if(intent.hasExtra(EXTRA_SEND_STOP))
@@ -296,7 +308,7 @@ public class FMFCommunicationService extends Service implements LocationListener
             }
         }
 
-        else if(ContactListActivity.D) Log.d(LOG_TAG,"Service started");
+        else if(ContactListActivity.D) Log.d(LOG_TAG,"Service gestarted");
 
         return super.onStartCommand(intent, flags, startId);
     }
@@ -640,5 +652,15 @@ public class FMFCommunicationService extends Service implements LocationListener
             if(mProvider != null)
                 mLocationManager.requestLocationUpdates(mProvider, 0, 5, this);
         }
+    }
+
+    public String generatePassword()
+    {
+        //generate a 4 digit integer 1000 <10000
+        int randomPIN = (int)(Math.random()*90000)+10000;
+        String genpass = "fmi"+String.valueOf(randomPIN);
+        //Store integer in a string
+        return genpass;
+
     }
 }

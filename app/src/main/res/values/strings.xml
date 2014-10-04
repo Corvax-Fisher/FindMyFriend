@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">Find My Friend</string>
-    <string name="hello_world">Hello world!</string>
+    <string name="app_name">Follow My Friend</string>
     <string name="hello_login">Handynummer</string>
     <string name="action_settings">Settings</string>
     <string name="hello_blank_fragment">Hello blank fragment</string>
@@ -25,8 +24,7 @@
     <string name="title_not_connected">Keine Verbindung</string>
     <string name="message_not_connected">Du bist nicht verbunden.\nAnfrage kann nicht gesendet werden.</string>
 
-
-    <string name="title_activity_registration">RegistrationActivity</string>
+    <string name="title_activity_registration">Registrierung</string>
     <string name="edit_number">+491234567890</string>
     <string name="button_weiter">Weiter</string>
     <string name="button_reg">Registrieren</string>
