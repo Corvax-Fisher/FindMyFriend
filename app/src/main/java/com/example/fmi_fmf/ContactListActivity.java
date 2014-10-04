@@ -17,13 +17,12 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-
-import org.jivesoftware.smack.RosterEntry;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.Button;
+import android.widget.ListView;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Dictionary;
-import java.util.HashMap;
 
 
 public class ContactListActivity extends FragmentActivity
@@ -36,7 +35,6 @@ public class ContactListActivity extends FragmentActivity
     public static final String ACTION_SHOW_REQUEST_DIALOG = "show request dialog";
     public static final String ACTION_SHOW_DECLINE_DIALOG = "show decline dialog";
     public static final String ACTION_OPEN_MAP = "open map";
-    public static final String EXTRA_FULL_NAME = "full name";
 
     public static boolean isActive = false;
     private ProgressDialog mProgressDialog;
@@ -44,9 +42,12 @@ public class ContactListActivity extends FragmentActivity
     private NoProviderDialogFragment mNoProviderDialog;
     private AlertDialog mNotConnectedAlert;
 
-    ArrayList<FMFListEntry> mJabberIdToRealName;
+    private ListView mContactListView;
+    private ContactListAdapter mContactsAdapter;
+    ArrayList<FMFListEntry> mContacts;
 
     private String mRequesterJabberId;
+//    private int mNotificationTriggered = 0;
 
     private BroadcastReceiver br = new BroadcastReceiver() {
         @Override
@@ -61,18 +62,27 @@ public class ContactListActivity extends FragmentActivity
                 AlertDialog pauseDialog = builder.create();
                 pauseDialog.show();
             } else if(intent.getAction().equals(ACTION_SHOW_REQUEST_DIALOG)) {
-                if(mRequestDialog == null) mRequestDialog = new PositionRequestDialogFragment();
-                if(!mRequestDialog.isVisible())
-                {
-                    mRequesterJabberId = intent.getStringExtra(EXTRA_FULL_NAME);
-                    mRequestDialog.show(getSupportFragmentManager(), PositionRequestDialogFragment.class.getSimpleName());
-                }
-            } else if(intent.getAction().equals(FMFCommunicationService.INFO_CONNECTED)) {
+                mRequesterJabberId = intent.getStringExtra(FMFCommunicationService.EXTRA_JABBER_ID);
+                String from = intent.getStringExtra(FMFCommunicationService.EXTRA_FULL_NAME);
+                PositionRequestDialogFragment.getInstance().setFullName(from);
+                if(!PositionRequestDialogFragment.getInstance().isVisible())
+                    PositionRequestDialogFragment.getInstance()
+                            .show(getSupportFragmentManager(), "Position request");
+            } else if(intent.getAction().equals(ACTION_SHOW_DECLINE_DIALOG)) {
+                String from = intent.getStringExtra(FMFCommunicationService.EXTRA_FULL_NAME);
+                AlertDialog requestDeclinedAlert = new AlertDialog.Builder(ContactListActivity.this)
+                        .setTitle(R.string.title_request_declined)
+                        .setMessage(from + " hat deine Anfrage abgelehnt")
+                        .create();
+                requestDeclinedAlert.show();
+            }
+
+            /*else if(intent.getAction().equals(FMFCommunicationService.INFO_CONNECTED)) {
                 if(mBound) {
                     mJabberIdToRealName = new ArrayList<FMFListEntry>();
                     mService.fillInJabberIdAndStatus(mJabberIdToRealName);
                 }
-            }
+            }*/
             //TODO (Martin):when user logged in set mLoggedIn = true, check roster presences
             //TODO          and add a roster listener
         }
@@ -80,6 +90,7 @@ public class ContactListActivity extends FragmentActivity
 
 
     private FMFCommunicationService mService;
+    private boolean mBound;
     private ServiceConnection mConnection = new ServiceConnection() {
 
         @Override
@@ -92,11 +103,60 @@ public class ContactListActivity extends FragmentActivity
             if(!mService.isProviderAvailable())
             {
                 if(mNoProviderDialog == null) mNoProviderDialog = new NoProviderDialogFragment();
-                mNoProviderDialog.show(getSupportFragmentManager(), "No Provider Dialog");
+                if(!mNoProviderDialog.isAdded()) mNoProviderDialog.show(getSupportFragmentManager(), "No Provider Dialog");
             }
-            FMFCommunicationService.N_INFO notificationInfo = mService.getNotificationInfo();
-            if(notificationInfo == FMFCommunicationService.N_INFO.ACCEPT)
-                startActivity(new Intent(ContactListActivity.this,MapsActivity.class));
+//            FMFCommunicationService.N_INFO notificationInfo = mService.getNotificationInfo();
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            boolean notificationHandled = false;
+            if(getIntent() != null)
+            {
+                if(getIntent().getAction().equals(ACTION_SHOW_REQUEST_DIALOG))
+                {
+//                    mNotificationTriggered = 1337;
+                    handleNotification(1337);
+                    notificationHandled = true;
+                } else if(getIntent().getAction().equals(ACTION_OPEN_MAP)) {
+//                    mNotificationTriggered = 1338;
+                    handleNotification(1338);
+                    notificationHandled = true;
+                }
+            }
+            if(!notificationHandled) {
+                if (mService.notificationExists(1337)) {
+                    //Request Notification exists
+                    nm.cancel(1337);
+                    mService.cancelNotification(1337);
+                    handleNotification(1337);
+                } else if (mService.notificationExists(1338)) {
+                    //Accept Notification exists
+                    nm.cancel(1338);
+                    mService.cancelNotification(1338);
+                    nm.cancel(1337);
+                    mService.cancelNotification(1337);
+                    handleNotification(1338);
+                } else if(mService.notificationExists(1339)) {
+                    nm.cancel(1339);
+                    mService.cancelNotification(1339);
+                    String from = mService.getFullName(1339);
+                    AlertDialog requestDeclinedAlert = new AlertDialog.Builder(ContactListActivity.this)
+                            .setTitle(R.string.title_request_declined)
+                            .setMessage(from + " hat deine Anfrage abgelehnt")
+                            .create();
+                    requestDeclinedAlert.show();
+                }
+            }
+            mService.updateAcceptNotificationIfExists(true);
+
+            if(mContactListView == null) {
+                mContactListView = (ListView) findViewById(R.id.ContactListView);
+                mContactListView.setAdapter(mService.getContactsAdapter());
+                mContactListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                        onContactClicked(mService.getContactsAdapter().getItem(position).jabberID);
+                    }
+                });
+            }
         }
 
         @Override
@@ -104,21 +164,19 @@ public class ContactListActivity extends FragmentActivity
             mBound = false;
         }
     };
-    private boolean mBound;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
 
+        setContentView(R.layout.activity_contact_list);
         //TODO Farah: change this later,login activity nur wenn own ph number not in db
 
 
-        if(true){
+        if(false){
             startActivity(new Intent(this, RegistrationActivity.class));
-        }
-        else {
-            setContentView(R.layout.activity_contact_list);
         }
 
         startService(new Intent(this,FMFCommunicationService.class));
@@ -129,25 +187,35 @@ public class ContactListActivity extends FragmentActivity
          * - Add the ListAdapter to the ListView
          * - Implement an onItemClickListener and add it to the ListView
          */
+
+        Button testButton = (Button) findViewById(R.id.button);
+        testButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                isActive = false;
+                mService.notifyAboutAccept("Dieter Nuhr");
+                mService.notifyAboutRequest("+461761234567890@jabber.de","Bülent Ceylan");
+                mService.notifyAboutDecline("Kunibert Schlömpel");
+                isActive = true;
+            }
+        });
+
     }
 
     //@Farah: call this method, when the user clicked on a contact in the contact list view.
-    private void onContactClicked(String contactsJabberId, String contactsFullName){
+    private void onContactClicked(String contactsJabberId){
         if(mBound){
-            FMFCommunicationService.RET_CODE ret = mService.sendRequest(contactsJabberId,contactsFullName);
+            FMFCommunicationService.RET_CODE ret = mService.sendRequest(contactsJabberId);
             if(ret == FMFCommunicationService.RET_CODE.NO_PROVIDER)
             {
                 if(mNoProviderDialog == null) mNoProviderDialog = new NoProviderDialogFragment();
                 mNoProviderDialog.show(getSupportFragmentManager(), "No Provider Dialog");
             } else if(ret == FMFCommunicationService.RET_CODE.NOT_CONNECTED) {
-                if(mNotConnectedAlert == null)
-                {
-                    mNotConnectedAlert = new AlertDialog.Builder(this)
-                            .setTitle(R.string.title_not_connected)
-                            .setMessage(R.string.message_not_connected)
-                            .create();
-                }
-                mNotConnectedAlert.show();
+                AlertDialog notConnectedAlert = new AlertDialog.Builder(this)
+                        .setTitle(R.string.title_not_connected)
+                        .setMessage(R.string.message_not_connected)
+                        .create();
+                notConnectedAlert.show();
             } else if(ret == FMFCommunicationService.RET_CODE.OK) {
                 if(mProgressDialog ==null) mProgressDialog = new ProgressDialog(this);
                 mProgressDialog.setMessage("Auf Antwort warten...");
@@ -183,20 +251,6 @@ public class ContactListActivity extends FragmentActivity
 
         isActive = true;
 
-        NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        nm.cancel(1337);
-        Intent senderIntent = getIntent();
-        if(senderIntent != null)
-        {
-            if(senderIntent.getAction().equals(ACTION_SHOW_REQUEST_DIALOG))
-            {
-                mRequesterJabberId = senderIntent.getStringExtra(EXTRA_FULL_NAME);
-                if(mRequestDialog == null) mRequestDialog = new PositionRequestDialogFragment();
-                mRequestDialog.show(getSupportFragmentManager(), PositionRequestDialogFragment.class.getSimpleName());
-            } else if(senderIntent.getAction().equals(ACTION_OPEN_MAP)) {
-                startActivity(new Intent(this,MapsActivity.class));
-            }
-        }
         Intent intent = new Intent(this, FMFCommunicationService.class);
         bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
 
@@ -209,11 +263,17 @@ public class ContactListActivity extends FragmentActivity
         if (D) Log.d(LOG_TAG, "onStop");
         isActive = false;
 
+        if(mBound) mService.updateAcceptNotificationIfExists(false);
+
 //        Unbind from the service
         if (mBound) {
             unbindService(mConnection);
             mBound = false;
         }
+
+//        if(mNoProviderDialog != null) {
+//            if(mNoProviderDialog.isVisible()) mNoProviderDialog.dismiss();
+//        }
         //TODO (Martin): when mLoggedIn = true, remove rosterlistener
 
     }
@@ -238,34 +298,42 @@ public class ContactListActivity extends FragmentActivity
     }
 
     @Override
-    public void onClick(int which) {
-        switch(which)
-        {
-            case PositionRequestDialogFragment.ID_ACCEPT:
-                if(mBound) mService.sendAccept(mRequesterJabberId,"Echter Name");
-                break;
-            case PositionRequestDialogFragment.ID_ACCEPT_AND_REQUEST:
-                //TODO (Martin): remove this option
-                if(mBound) mService.sendAcceptAndRequest(mRequesterJabberId,"Echter Name");
-                break;
-            case PositionRequestDialogFragment.ID_DECLINE:
-                if(mBound) mService.sendDecline(mRequesterJabberId, "Echter Name");
-                break;
-            default:
-                return;
-        }
+    public void onDialogPositiveClick() {
+        if(mBound) mService.sendAccept(mRequesterJabberId);
+    }
+
+    @Override
+    public void onDialogNegativeClick() {
+        if(mBound) mService.sendDecline(mRequesterJabberId);
     }
 
     @Override
     public void onCancel() {
-        if(mBound) mService.sendDecline(mRequesterJabberId,"Echter Name");
+        if(mBound) mService.sendDecline(mRequesterJabberId);
+    }
+
+    private void handleNotification(int notificationId){
+        if(notificationId == 1337){
+            mRequesterJabberId = mService.getJabberId();
+            PositionRequestDialogFragment.getInstance().setFullName(mService.getFullName(1337));
+            if(!PositionRequestDialogFragment.getInstance().isAdded())
+                PositionRequestDialogFragment.getInstance().show(getSupportFragmentManager(),"Position request");
+        } else if(notificationId == 1338) {
+            Intent i = new Intent(this,MapsActivity.class);
+            if(mService.notificationExists(1337)){
+                PositionRequestDialogFragment.getInstance().setFullName(mService.getFullName(1337));
+                i.setAction(MapsActivity.ACTION_SHOW_REQUEST_DIALOG)
+                        .putExtra(FMFCommunicationService.EXTRA_JABBER_ID,mService.getJabberId());
+            }
+            startActivity(i);
+        }
     }
 
     private class DataBaseLookupTask extends AsyncTask< Void, Void, Void > {
 
         @Override
         protected Void doInBackground(Void... params) {
-            for(FMFListEntry listEntry : mJabberIdToRealName)
+            for(FMFListEntry listEntry : mContacts)
             {
                 //TODO (Farah): lookup listEntry in database
                 //TODO  if entry found set the real name of the list entry

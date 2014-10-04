@@ -8,16 +8,9 @@
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="title_activity_map">MapActivity</string>
     <string name="title_activity_maps">Map</string>
-    <string name="dialog_position_request">Möchtest du die Anfrage akzeptieren?</string>
-    <string name="accept">Ja</string>
-    <string name="accept_and_send_request">Ja und Gegenanfrage schicken</string>
-    <string name="decline">Nein</string>
 
-    <string-array name="request_choices">
-        <item>Ja</item>
-        <item>Ja + Gegenanfrage senden</item>
-        <item>Nein</item>
-    </string-array>
+    <string name="accept">Ja</string>
+    <string name="decline">Nein</string>
 
     <string name="title_no_provider_enabled">Standort nicht verfügbar</string>
     <string name="message_no_provider_enabled">Diese App benötigt deinen Standort.\nMöchtest du ihn jetzt freigeben?\n(Standort-Menü öffnet sich)</string>
@@ -25,6 +18,7 @@
     <string name="title_not_connected">Keine Verbindung</string>
     <string name="message_not_connected">Du bist nicht verbunden.\nAnfrage kann nicht gesendet werden.</string>
 
+    <string name="title_request_declined">Anfrage abgelehnt</string>
 
     <string name="title_activity_registration">RegistrationActivity</string>
     <string name="edit_number">+491234567890</string>

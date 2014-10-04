@@ -13,19 +13,32 @@ import android.util.Log;
  */
 public class PositionRequestDialogFragment extends DialogFragment {
 
-    public static final int ID_ACCEPT = 0;
-    public static final int ID_ACCEPT_AND_REQUEST = 1;
-    public static final int ID_DECLINE = 2;
+//    public static final int ID_ACCEPT = 0;
+//    public static final int ID_ACCEPT_AND_REQUEST = 1;
+//    public static final int ID_DECLINE = 2;
+
+    private static PositionRequestDialogFragment instance = null;
+
+    public static PositionRequestDialogFragment getInstance() {
+        if (instance == null) {
+            instance = new PositionRequestDialogFragment();
+        }
+        return instance;
+    }
+
+    private String mFullName;
+
+    public void setFullName(String fullName){
+        mFullName = fullName;
+    }
 
     /* The activity that creates an instance of this dialog fragment must
  * implement this interface in order to receive event callbacks.
  * Each method passes the DialogFragment in case the host needs to query it. */
     public interface RequestDialogListener {
-        public void onClick(int which);
         public void onCancel();
-//        public void onDialogPositiveClick();
-//        public void onDialogNeutralClick();
-//        public void onDialogNegativeClick();
+        public void onDialogPositiveClick();
+        public void onDialogNegativeClick();
     }
 
     // Use this instance of the interface to deliver action events
@@ -57,29 +70,19 @@ public class PositionRequestDialogFragment extends DialogFragment {
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         // Use the Builder class for convenient dialog construction
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-        builder.setTitle(R.string.dialog_position_request)
-                .setItems(R.array.request_choices,new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int which) {
-                        if(mListener != null) mListener.onClick(which);
-                    }
-                });
+        builder.setTitle("Positionsanfrage")
+                .setMessage(mFullName + " möchte zu dir navigieren. Möchtest du die Anfrage akzeptieren?")
         //TODO (Martin): change this to a Yes/No dialog
-//                .setPositiveButton(R.string.accept, new DialogInterface.OnClickListener() {
-//                    public void onClick(DialogInterface dialog, int id) {
-//                        if(mListener != null) mListener.onDialogPositiveClick();
-//                    }
-//                })
-//                .setNeutralButton(R.string.accept_and_send_request, new DialogInterface.OnClickListener() {
-//                    public void onClick(DialogInterface dialog, int id) {
-//                        if(mListener != null) mListener.onDialogNeutralClick();
-//                   }
-//                })
-//                .setNegativeButton(R.string.decline, new DialogInterface.OnClickListener() {
-//                    public void onClick(DialogInterface dialog, int id) {
-//                        if(mListener != null) mListener.onDialogNegativeClick();
-//                   }
-//                });
+                .setPositiveButton(R.string.accept, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        if(mListener != null) mListener.onDialogPositiveClick();
+                    }
+                })
+                .setNegativeButton(R.string.decline, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        if(mListener != null) mListener.onDialogNegativeClick();
+                   }
+                });
         // Create the AlertDialog object and return it
         return builder.create();
     }

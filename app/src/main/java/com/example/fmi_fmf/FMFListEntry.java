@@ -17,8 +17,19 @@ public class FMFListEntry {
         status = OFFLINE;
     }
 
+    FMFListEntry(String fullName) {
+        this.realName = fullName;
+        this.jabberID = "";
+        this.status = OFFLINE;
+    }
+
     FMFListEntry(String jabberID, boolean status){
         this.jabberID = jabberID;
         this.status = status;
+    }
+
+    @Override
+    public String toString() {
+        return realName;
     }
 }

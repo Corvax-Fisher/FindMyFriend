@@ -38,7 +38,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-public class MapsActivity extends FragmentActivity implements LocationListener {
+public class MapsActivity extends FragmentActivity implements LocationListener,
+        PositionRequestDialogFragment.RequestDialogListener {
+
+    public static final String UPDATE_FRIEND_LOCATION = "friend location update";
+    public static final String ACTION_SHOW_REQUEST_DIALOG = "show request dialog";
 
     private GoogleMap mMap; // Might be null if Google Play services APK is not available.
 
@@ -48,7 +52,7 @@ public class MapsActivity extends FragmentActivity implements LocationListener {
     BroadcastReceiver br = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if(intent.getAction().equals(FMFCommunicationService.UPDATE_FRIEND_LOCATION))
+            if(intent.getAction().equals(UPDATE_FRIEND_LOCATION))
             {
                 double locationExtra[] = intent.getDoubleArrayExtra(
                         FMFCommunicationService.EXTRA_FRIEND_LOCATION );
@@ -74,15 +78,24 @@ public class MapsActivity extends FragmentActivity implements LocationListener {
                     // Start downloading json data from Google Directions API
                     downloadTask.execute(url);
                 }
+            } else if(intent.getAction().equals(ACTION_SHOW_REQUEST_DIALOG)) {
+                mRequesterJabberId = intent.getStringExtra(FMFCommunicationService.EXTRA_JABBER_ID);
+                String from = intent.getStringExtra(FMFCommunicationService.EXTRA_FULL_NAME);
+                PositionRequestDialogFragment.getInstance().setFullName(from);
+                if(!PositionRequestDialogFragment.getInstance().isVisible())
+                    PositionRequestDialogFragment.getInstance()
+                            .show(getSupportFragmentManager(), "Position request");
             }
         }
     };
+    private String mRequesterJabberId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
         setUpMapIfNeeded();
+        if(ContactListActivity.D) Log.d(MapsActivity.class.getSimpleName(), "onCreate");
 
         // Getting Google Play availability status
         int status = GooglePlayServicesUtil.isGooglePlayServicesAvailable(getBaseContext());
@@ -125,6 +138,23 @@ public class MapsActivity extends FragmentActivity implements LocationListener {
 
             locationManager.requestLocationUpdates(provider, 0, 5, this);
         }
+
+//        Intent i = new Intent(this,FMFCommunicationService.class)
+//                .setAction(FMFCommunicationService.ACTION_CANCEL_NOTIFICATION)
+//                .putExtra(FMFCommunicationService.EXTRA_NOTIFICATION_ID, 1338);
+//        startService(i);
+        if(getIntent() != null){
+            if(getIntent().getAction()!= null){
+                if(getIntent().getAction().equals(ACTION_SHOW_REQUEST_DIALOG)) {
+                    mRequesterJabberId = getIntent().getStringExtra(FMFCommunicationService.EXTRA_JABBER_ID);
+                    if(!PositionRequestDialogFragment.getInstance().isAdded()) {
+                        PositionRequestDialogFragment.getInstance().show(getSupportFragmentManager(),"Position request");
+//                        i.putExtra(FMFCommunicationService.EXTRA_NOTIFICATION_ID,1337);
+//                        startService(i);
+                    }
+                }
+            }
+        }
     }
 
     @Override
@@ -132,13 +162,21 @@ public class MapsActivity extends FragmentActivity implements LocationListener {
         super.onResume();
         setUpMapIfNeeded();
         LocalBroadcastManager.getInstance(this).registerReceiver(br,
-                new IntentFilter(FMFCommunicationService.UPDATE_FRIEND_LOCATION));
+                new IntentFilter(UPDATE_FRIEND_LOCATION));
+        LocalBroadcastManager.getInstance(this).registerReceiver(br,
+                new IntentFilter(ACTION_SHOW_REQUEST_DIALOG));
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         LocalBroadcastManager.getInstance(this).unregisterReceiver(br);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        finish();
     }
 
     /**
@@ -242,9 +280,35 @@ public class MapsActivity extends FragmentActivity implements LocationListener {
         return data;
     }
 
+    @Override
+    public void onCancel() {
+        Intent i = new Intent(this,FMFCommunicationService.class)
+                .setAction(FMFCommunicationService.ACTION_PROCESS_REQUEST_RESULT)
+                .putExtra(FMFCommunicationService.EXTRA_JABBER_ID, mRequesterJabberId)
+                .putExtra(FMFCommunicationService.EXTRA_REQUEST_ACCEPTED,false);
+        startService(i);
+    }
+
+    @Override
+    public void onDialogPositiveClick() {
+        Intent i = new Intent(this,FMFCommunicationService.class)
+                .setAction(FMFCommunicationService.ACTION_PROCESS_REQUEST_RESULT)
+                .putExtra(FMFCommunicationService.EXTRA_JABBER_ID, mRequesterJabberId)
+                .putExtra(FMFCommunicationService.EXTRA_REQUEST_ACCEPTED,true);
+        startService(i);
+    }
+
+    @Override
+    public void onDialogNegativeClick() {
+        Intent i = new Intent(this,FMFCommunicationService.class)
+                .setAction(FMFCommunicationService.ACTION_PROCESS_REQUEST_RESULT)
+                .putExtra(FMFCommunicationService.EXTRA_JABBER_ID, mRequesterJabberId)
+                .putExtra(FMFCommunicationService.EXTRA_REQUEST_ACCEPTED,false);
+        startService(i);
+    }
 
 
-/** A class to download data from Google Directions URL */
+    /** A class to download data from Google Directions URL */
 private class DownloadTask extends AsyncTask<String, Void, String> {
 
     // Downloading data in non-ui thread
