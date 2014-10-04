@@ -64,6 +64,10 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     public static final String ACTION_CANCEL_NOTIFICATION = "cancel accept notification";
     public static final String EXTRA_NOTIFICATION_ID = "notification id";
+    public static final String USERNAME = "username";
+    public static final String PASSWORD = "password";
+
+    public static final String INFO_CONNECTED = "connected info";
 
     public static final String EXTRA_JABBER_ID = "jabber id";
     public static final String EXTRA_FULL_NAME = "full name";
@@ -208,7 +212,7 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     public void sendAccept(String myFriendsJabberId) {
         if(ContactListActivity.D)
-            Toast.makeText(getApplicationContext(),"sending an accept to " + myFriendsJabberId,Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(),"sending an accept to " + myFriendsRealName,Toast.LENGTH_SHORT).show();
 
         if(mAcceptedJabberIds == null) mAcceptedJabberIds = new ArrayList<String>();
         mAcceptedJabberIds.add(myFriendsJabberId);
@@ -294,7 +298,7 @@ public class FMFCommunicationService extends Service implements LocationListener
     public void onCreate() {
         super.onCreate();
 
-        if(ContactListActivity.D) Log.d(LOG_TAG,"Service created");
+        if(ContactListActivity.D) Log.d(LOG_TAG,"Service gestartet");
 
 //        mNotificationInfo = N_INFO.NONE;
         mExistingNotifications = new HashSet<Integer>(3);
@@ -302,16 +306,7 @@ public class FMFCommunicationService extends Service implements LocationListener
 //        mExistingNotifications.add(1337);
 //        mExistingNotifications.add(1338);
 
-        SharedPreferences sharedPref = getSharedPreferences("credentials",Context.MODE_PRIVATE);
-        String username = sharedPref.getString("username", "");
-        String password = sharedPref.getString("password", "");
-        if(!username.isEmpty() && !password.isEmpty())
-        {
-            connect(username, password);
-        } else {
-            //TODO: create register-activity
-            //startActivity(new Intent(this,RegisterActivity.class));
-        }
+
         mLocationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         //Add LocationListener
@@ -342,22 +337,20 @@ public class FMFCommunicationService extends Service implements LocationListener
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
 
-        if(intent != null){
-            if(intent.getAction() != null) {
-                if (intent.getAction().equals(ACTION_REGISTER)) {
-                    String phoneNr = intent.getStringExtra(EXTRA_PHONE_NUMBER);
-                    //TODO (Farah): register
-                } else if(intent.getAction().equals(ACTION_CANCEL_NOTIFICATION)) {
-                    int notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID,0);
-                    if(notificationId != 0){
-//                        mNotificationManager.cancel(notificationId);
-                        mExistingNotifications.remove(notificationId);
-                    }
-                } else if(intent.getAction().equals(ACTION_PROCESS_REQUEST_RESULT)) {
-                    if(intent.getBooleanExtra(EXTRA_REQUEST_ACCEPTED, false))
-                        sendAccept(intent.getStringExtra(EXTRA_JABBER_ID));
-                    else sendDecline(intent.getStringExtra(EXTRA_JABBER_ID));
-                }
+        if(intent.getAction().equals(ACTION_REGISTER))
+        {
+            String phoneNr = intent.getStringExtra(EXTRA_PHONE_NUMBER);
+            //TODO (Farah): register
+        }
+        if(intent.hasExtra(EXTRA_SEND_STOP))
+        {
+            Toast.makeText(getApplicationContext(),"sending stop to "+intent.getStringExtra("send stop to"),Toast.LENGTH_SHORT).show();
+            try {
+                if(mReceiverChat != null) mReceiverChat.sendMessage("S");
+            } catch (XMPPException e) {
+                e.printStackTrace();
+            } catch (SmackException.NotConnectedException e) {
+                e.printStackTrace();
             }
 
             if(intent.hasExtra(EXTRA_SEND_STOP))
@@ -790,5 +783,15 @@ public class FMFCommunicationService extends Service implements LocationListener
             if(mProvider != null)
                 mLocationManager.requestLocationUpdates(mProvider, 0, 5, this);
         }
+    }
+
+    public String generatePassword()
+    {
+        //generate a 4 digit integer 1000 <10000
+        int randomPIN = (int)(Math.random()*90000)+10000;
+        String genpass = "fmi"+String.valueOf(randomPIN);
+        //Store integer in a string
+        return genpass;
+
     }
 }

@@ -2,8 +2,11 @@ package com.example.fmi_fmf;
 
 import android.app.Activity;
 import android.app.PendingIntent;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.telephony.SmsManager;
 import android.telephony.TelephonyManager;
@@ -12,7 +15,15 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.Toast;
 
+import org.apache.http.NameValuePair;
+import org.apache.http.message.BasicNameValuePair;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class RegistrationActivity extends Activity {
     private static final String LOG_TAG = RegistrationActivity.class.getSimpleName();
@@ -20,12 +31,30 @@ public class RegistrationActivity extends Activity {
 
     private String pin = generatePIN();
 
+    public static final String EXTRA_PHONE_NUMBER = "phone number";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_registration);
-        getMyPhoneNumber();
+        //sharedpreferences zum testen löschen, damit registration activity aktiv wird
+//        SharedPreferences pref = getApplicationContext().getSharedPreferences("FMFNumbers", Context.MODE_PRIVATE);
+//        SharedPreferences.Editor editor = pref.edit();
+//        editor.clear();
+//        editor.commit();
+
+        SharedPreferences sharedPref = getSharedPreferences("FMFNumbers",Context.MODE_PRIVATE);
+        String numberSaved = sharedPref.getString(EXTRA_PHONE_NUMBER,"");
+
+        if(numberSaved.isEmpty()){
+            setContentView(R.layout.activity_registration);
+            setSimPhoneNumber();
+        }
+        else {
+            Intent i = new Intent(this,ContactListActivity.class)
+                    .setAction(ContactListActivity.ACTION_SHOW_CONTACTS);
+            this.startActivity(i);
+        }
     }
 
     @Override
@@ -48,14 +77,28 @@ public class RegistrationActivity extends Activity {
         return super.onOptionsItemSelected(item);
     }
 
-
-    protected void onResume() {
+    @Override
+    protected void onStart() {
         super.onStart();
-        if (D) Log.d(LOG_TAG, "onStart");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
 
     }
 
-    public void getMyPhoneNumber () {
+    @Override
+    protected void onPause() {
+        super.onPause();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+    }
+
+    public void setSimPhoneNumber () {
         TelephonyManager teleManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         String getSimNumber = teleManager.getLine1Number();
         EditText mobileNo = (EditText) findViewById(R.id.mobile_no);
@@ -64,9 +107,9 @@ public class RegistrationActivity extends Activity {
 
     public void verifyNumber (View view){
 
-        String message = "Follow My Friend! Das ist Dein Verifizierungscode: "+ pin;
+        String message = "Dein Verifizierungscode ist: "+ pin;
         EditText mobileNo = (EditText) findViewById(R.id.mobile_no);
-        String number = String.valueOf(mobileNo.getText());
+        String number = mobileNo.getText().toString();
 
     /** Creating a pending intent which will be broadcasted when an sms message is successfully sent */
             PendingIntent piSent = PendingIntent.getBroadcast(getBaseContext(), 0, new Intent("sent_msg") , 0);
@@ -81,19 +124,23 @@ public class RegistrationActivity extends Activity {
             smsManager.sendTextMessage(number, null, message, piSent, piDelivered);
     }
 
-    public void compareNumber (View view){
+    public void compareCode (View view){
         EditText codeNo = (EditText) findViewById(R.id.code_no);
+        EditText mobileNo = (EditText) findViewById(R.id.mobile_no);
+
+        String number= mobileNo.getText().toString();
 
         if (String.valueOf(codeNo.getText()).equals(String.valueOf(pin))) {
-            Log.d("Code farah","true");
-            EditText mobileNo = (EditText) findViewById(R.id.mobile_no);
+
             Intent i = new Intent(this,FMFCommunicationService.class)
                     .setAction(FMFCommunicationService.ACTION_REGISTER)
-                    .putExtra(FMFCommunicationService.EXTRA_PHONE_NUMBER,mobileNo.getText().toString());
-            startService(i);
+                    .putExtra(FMFCommunicationService.EXTRA_PHONE_NUMBER,number);
+            this.startService(i);
+
+            new AddNewNumber().execute();
         }
         else {
-            Log.d("Code farah","false");
+            Toast.makeText(getApplicationContext(), "Verifizierungscode stimmt nicht überein. Versuchen Sie es erneut.", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -104,6 +151,78 @@ public class RegistrationActivity extends Activity {
 
         //Store integer in a string
         return String.valueOf(randomPIN);
+
+    }
+
+    class AddNewNumber extends AsyncTask<String,String,String> {
+
+        private ProgressDialog pDialog;
+
+        JSONParser jsonParser = new JSONParser();
+
+        // url to add number
+        String url_add_number = "http://www.farahzeb.de/fmi/add_single_number.php";
+
+        // JSON Node names
+        String TAG_SUCCESS = "success";
+
+        /**
+         * Before starting background thread Show Progress Dialog
+         * */
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            pDialog = new ProgressDialog(RegistrationActivity.this);
+            pDialog.setMessage("Registrierung läuft... Bitte warten");
+            pDialog.setIndeterminate(false);
+            pDialog.setCancelable(true);
+            pDialog.show();
+        }
+
+        protected String doInBackground(String... args) {
+            EditText mobileNo = (EditText) findViewById(R.id.mobile_no);
+
+            String number= mobileNo.getText().toString();
+
+            // Building Parameters
+            List<NameValuePair> params = new ArrayList<NameValuePair>();
+            params.add(new BasicNameValuePair("number", number));
+
+            // getting JSON Object
+            // Note that create product url accepts POST method
+            JSONObject json = jsonParser.makeHttpRequest(url_add_number,
+                    "POST", params);
+
+            // check log cat fro response
+            Log.d("Create Response", json.toString());
+
+            // check for success tag
+            try {
+                int success = json.getInt(TAG_SUCCESS);
+
+                if (success == 1) {
+                    // successfully registered number
+                    Toast.makeText(getApplicationContext(), "Ihre Anmeldung war erfolgreich", Toast.LENGTH_SHORT).show();
+
+                    // closing this screen
+                    finish();
+                } else {
+                    // failed to create product
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            return null;
+
+        }
+        /**
+         * After completing background task Dismiss the progress dialog
+         * **/
+        protected void onPostExecute(String file_url) {
+            // dismiss the dialog once done
+            pDialog.dismiss();
+        }
 
     }
 }

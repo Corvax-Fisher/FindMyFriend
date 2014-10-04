@@ -30,10 +30,10 @@ public class SmsNotifications extends BroadcastReceiver {
         if(actionName.equals("sent_msg")){
             switch(getResultCode()){
                 case Activity.RESULT_OK:
-                    Toast.makeText(context, "Message is sent successfully", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, "Nachricht wurde erfolgreich gesendet.", Toast.LENGTH_SHORT).show();
                     break;
                 default:
-                    Toast.makeText(context, "Error in sending Message", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, "Fehler während des Sendens. Versuchen Sie es erneut.", Toast.LENGTH_SHORT).show();
                     break;
             }
         }
@@ -41,10 +41,10 @@ public class SmsNotifications extends BroadcastReceiver {
         if(actionName.equals("delivered_msg")){
             switch(getResultCode()){
                 case Activity.RESULT_OK:
-                    Toast.makeText(context, "Message is delivered" , Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, "Nachricht wurde zugestellt." , Toast.LENGTH_SHORT).show();
                     break;
                 default:
-                    Toast.makeText(context, "Error in the delivery of message", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, "Fehler während der Zustellung. Versuchen Sie es erneut.", Toast.LENGTH_SHORT).show();
                     break;
 
             }

@@ -5,24 +5,39 @@ import android.app.NotificationManager;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.provider.ContactsContract;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.ListAdapter;
+import android.widget.ListView;
+import android.widget.SimpleAdapter;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.ListView;
 
+import org.apache.http.NameValuePair;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
 
 public class ContactListActivity extends FragmentActivity
@@ -32,9 +47,15 @@ public class ContactListActivity extends FragmentActivity
     public static final boolean D = true;
 
     public static final String ACTION_CANCEL_WAIT_PROGRESS = "cancel wait progress";
+    public static final String ACTION_SHOW_CONTACTS = "show contacts";
     public static final String ACTION_SHOW_REQUEST_DIALOG = "show request dialog";
     public static final String ACTION_SHOW_DECLINE_DIALOG = "show decline dialog";
     public static final String ACTION_OPEN_MAP = "open map";
+    public static final String EXTRA_FULL_NAME = "full name";
+    public static final String EXTRA_PHONE_NUMBER = "phone number";
+
+    public static final String USERNAME = "username";
+    public static final String PASSWORD = "password";
 
     public static boolean isActive = false;
     private ProgressDialog mProgressDialog;
@@ -48,6 +69,26 @@ public class ContactListActivity extends FragmentActivity
 
     private String mRequesterJabberId;
 //    private int mNotificationTriggered = 0;
+
+    // Progress Dialog
+    private ProgressDialog pDialog;
+
+    // Creating JSON Parser object
+    JSONParser jParser = new JSONParser();
+
+    ArrayList<HashMap<String, String>> registeredList;
+
+    // url to get all products list
+    private static String url_all_numbers = "http://farahzeb.de/fmi/get_all_numbers.php";
+
+    // JSON Node names
+    private static final String TAG_SUCCESS = "success";
+    private static final String TAG_PRODUCTS = "registeredNumbers";
+    private static final String TAG_RID = "rID";
+    private static final String TAG_NUMBER = "registeredNumber";
+
+    // products JSONArray
+    JSONArray contacts = null;
 
     private BroadcastReceiver br = new BroadcastReceiver() {
         @Override
@@ -172,14 +213,7 @@ public class ContactListActivity extends FragmentActivity
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_contact_list);
-        //TODO Farah: change this later,login activity nur wenn own ph number not in db
-
-
-        if(false){
-            startActivity(new Intent(this, RegistrationActivity.class));
-        }
-
-        startService(new Intent(this,FMFCommunicationService.class));
+        //this.startService(new Intent(this,FMFCommunicationService.class));
 
         /* TODO (Farah):
          * - Implement a custom ListAdapter with attributes like contactName, status(, etc.?)
@@ -330,26 +364,139 @@ public class ContactListActivity extends FragmentActivity
     }
 
     private class DataBaseLookupTask extends AsyncTask< Void, Void, Void > {
+    public void getAllContactNumbers(){
+        // Hashmap for ListView
+        registeredList = new ArrayList<HashMap<String, String>>();
 
+        //Loading contacts in Background Thread
+        new LoadAllContacts().execute();
+
+        // Get listview
+        ListView lv = (ListView)findViewById(R.id.contact_list);
+    }
+
+    /**
+     * Background Async Task to Load all product by making HTTP Request
+     * */
+    class LoadAllContacts extends AsyncTask<String, String, String> {
+
+        /**
+         * Before starting background thread Show Progress Dialog
+         * */
         @Override
-        protected Void doInBackground(Void... params) {
-            for(FMFListEntry listEntry : mContacts)
-            {
-                //TODO (Farah): lookup listEntry in database
-                //TODO  if entry found set the real name of the list entry
-                //listEntry.realName = ...
-                //TODO may do this task for each entry one by one
+        protected void onPreExecute() {
+            super.onPreExecute();
+            pDialog = new ProgressDialog(ContactListActivity.this);
+            pDialog.setMessage("Kontakte werden geladen. Bitte warten...");
+            pDialog.setIndeterminate(false);
+            pDialog.setCancelable(false);
+            pDialog.show();
+        }
+
+        /**
+         * getting All products from url
+         * */
+        protected String doInBackground(String... args) {
+            // Building Parameters
+            List<NameValuePair> params = new ArrayList<NameValuePair>();
+            // getting JSON string from URL
+            JSONObject json = jParser.makeHttpRequest(url_all_numbers, "GET", params);
+
+            try {
+                // Checking for SUCCESS TAG
+                int success = json.getInt(TAG_SUCCESS);
+
+                if (success == 1) {
+                    // products found
+                    // Getting Array of Products
+                    contacts = json.getJSONArray(TAG_PRODUCTS);
+
+                    //ownNumber
+                    SharedPreferences sharedPref = getSharedPreferences("FMFNumbers",Context.MODE_PRIVATE);
+                    String myNumber = sharedPref.getString(EXTRA_PHONE_NUMBER,"");
+
+                    // looping through All Products
+                    for (int i = 0; i < contacts.length(); i++) {
+                        JSONObject c = contacts.getJSONObject(i);
+
+                        // Storing each json item in variable
+                        String id = c.getString(TAG_RID);
+                        String number = c.getString(TAG_NUMBER);
+
+                        //getting all registered numbers and searching for their contactname in phone
+                        // own number shouldnt be in the contact list activity
+
+                        if (!number.equals(myNumber)) {
+                            String contactname = getContactName(getApplicationContext(), number);
+
+                            // creating new HashMap
+                            HashMap<String, String> map = new HashMap<String, String>();
+
+                            // adding each child node to HashMap key => value
+                            map.put(TAG_RID, id);
+                            map.put(TAG_NUMBER, contactname);
+
+                            // adding HashList to ArrayList
+                            registeredList.add(map);
+                        }
+
+                    }
+                } else {
+                    // no contacts found
+                    Log.d("no contacts","no contacts found");
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
             }
+
             return null;
         }
 
-        @Override
-        protected void onPostExecute(Void aVoid) {
-            super.onPostExecute(aVoid);
+        /**
+         * After completing background task Dismiss the progress dialog
+         * **/
+        protected void onPostExecute(String file_url) {
+            // dismiss the dialog after getting all products
+            pDialog.dismiss();
+            // updating UI from Background Thread
+            runOnUiThread(new Runnable() {
 
-            //TODO set the list adapter
+                public void run() {
+                    /**
+                     * Updating parsed JSON data into ListView
+                     * */
+                    ListAdapter adapter = new SimpleAdapter(
+                            ContactListActivity.this, registeredList,
+                            R.layout.single_contact, new String[]{TAG_RID,
+                            TAG_NUMBER},
+                            new int[]{R.id.rid, R.id.contact_number});
+                    // updating listview
+                    ListView lv = (ListView) findViewById(R.id.contact_list);
+                    lv.setAdapter(adapter);
+                }
+            });
+
         }
+
     }
 
+    public static String getContactName(Context context, String phoneNumber) {
+        ContentResolver cr = context.getContentResolver();
+        Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber));
+        Cursor cursor = cr.query(uri, new String[]{ContactsContract.PhoneLookup.DISPLAY_NAME}, null, null, null);
+        if (cursor == null) {
+            return null;
+        }
+        String contactName = null;
+        if(cursor.moveToFirst()) {
+            contactName = cursor.getString(cursor.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME));
+        }
+
+        if(cursor != null && !cursor.isClosed()) {
+            cursor.close();
+        }
+
+        return contactName;
+    }
 
 }
