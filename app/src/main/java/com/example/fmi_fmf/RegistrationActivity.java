@@ -44,7 +44,9 @@ public class RegistrationActivity extends Activity {
 //        editor.commit();
 
         SharedPreferences sharedPref = getSharedPreferences("FMFNumbers",Context.MODE_PRIVATE);
-        String numberSaved = sharedPref.getString(EXTRA_PHONE_NUMBER,"");
+        String numberSaved = "";//sharedPref.getString(EXTRA_PHONE_NUMBER,"");
+//        numberSaved = "+4917696045242";
+        Log.d(LOG_TAG,pin);
 
         if(numberSaved.isEmpty()){
             setContentView(R.layout.activity_registration);
@@ -54,6 +56,7 @@ public class RegistrationActivity extends Activity {
             Intent i = new Intent(this,ContactListActivity.class)
                     .setAction(ContactListActivity.ACTION_SHOW_CONTACTS);
             this.startActivity(i);
+            finish();
         }
     }
 
@@ -154,7 +157,7 @@ public class RegistrationActivity extends Activity {
 
     }
 
-    class AddNewNumber extends AsyncTask<String,String,String> {
+    class AddNewNumber extends AsyncTask<String,String,Boolean> {
 
         private ProgressDialog pDialog;
 
@@ -179,7 +182,7 @@ public class RegistrationActivity extends Activity {
             pDialog.show();
         }
 
-        protected String doInBackground(String... args) {
+        protected Boolean doInBackground(String... args) {
             EditText mobileNo = (EditText) findViewById(R.id.mobile_no);
 
             String number= mobileNo.getText().toString();
@@ -197,31 +200,32 @@ public class RegistrationActivity extends Activity {
             Log.d("Create Response", json.toString());
 
             // check for success tag
+            int success = 0;
             try {
-                int success = json.getInt(TAG_SUCCESS);
-
-                if (success == 1) {
-                    // successfully registered number
-                    Toast.makeText(getApplicationContext(), "Ihre Anmeldung war erfolgreich", Toast.LENGTH_SHORT).show();
-
-                    // closing this screen
-                    finish();
-                } else {
-                    // failed to create product
-                }
+                success = json.getInt(TAG_SUCCESS);
             } catch (JSONException e) {
                 e.printStackTrace();
             }
 
-            return null;
+            return success == 1;
 
         }
         /**
          * After completing background task Dismiss the progress dialog
          * **/
-        protected void onPostExecute(String file_url) {
+        protected void onPostExecute(Boolean success) {
             // dismiss the dialog once done
             pDialog.dismiss();
+
+            if(success)
+                Toast.makeText(RegistrationActivity.this, "Ihre Anmeldung war erfolgreich", Toast.LENGTH_LONG).show();
+
+            Intent i = new Intent(RegistrationActivity.this,ContactListActivity.class)
+                    .setAction(ContactListActivity.ACTION_SHOW_CONTACTS);
+            startActivity(i);
+
+            // closing this screen
+            finish();
         }
 
     }

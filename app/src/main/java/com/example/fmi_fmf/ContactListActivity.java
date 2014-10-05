@@ -442,6 +442,7 @@ public class ContactListActivity extends FragmentActivity
                             map.put(TAG_NUMBER, contactname);
 
                             // adding HashList to ArrayList
+                            if(contactname != null)
                             registeredList.add(map);
                         }
 
