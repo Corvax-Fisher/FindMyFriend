@@ -135,8 +135,7 @@ public class ContactListActivity extends FragmentActivity
     private ServiceConnection mConnection = new ServiceConnection() {
 
         @Override
-        public void onServiceConnected(ComponentName className,
-                                       IBinder service) {
+        public void onServiceConnected(ComponentName className, IBinder service) {
             // We've bound to LocalService, cast the IBinder and get LocalService instance
             FMFCommunicationService.LocalBinder binder = (FMFCommunicationService.LocalBinder) service;
             mService = binder.getService();
@@ -188,16 +187,16 @@ public class ContactListActivity extends FragmentActivity
             }
             mService.updateAcceptNotificationIfExists(true);
 
-            if(mContactListView == null) {
-                mContactListView = (ListView) findViewById(R.id.ContactListView);
-                mContactListView.setAdapter(mService.getContactsAdapter());
-                mContactListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                    @Override
-                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                        onContactClicked(mService.getContactsAdapter().getItem(position).jabberID);
-                    }
-                });
-            }
+//            if(mContactListView == null) {
+//                mContactListView = (ListView) findViewById(R.id.ContactListView);
+//                mContactListView.setAdapter(mService.getContactsAdapter());
+//                mContactListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+//                    @Override
+//                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+//                        onContactClicked(mService.getContactsAdapter().getItem(position).jabberID);
+//                    }
+//                });
+//            }
         }
 
         @Override
@@ -222,17 +221,17 @@ public class ContactListActivity extends FragmentActivity
          * - Implement an onItemClickListener and add it to the ListView
          */
 
-        Button testButton = (Button) findViewById(R.id.button);
-        testButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                isActive = false;
-                mService.notifyAboutAccept("Dieter Nuhr");
-                mService.notifyAboutRequest("+461761234567890@jabber.de","Bülent Ceylan");
-                mService.notifyAboutDecline("Kunibert Schlömpel");
-                isActive = true;
-            }
-        });
+//        Button testButton = (Button) findViewById(R.id.button);
+//        testButton.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                isActive = false;
+//                mService.notifyAboutAccept("Dieter Nuhr");
+//                mService.notifyAboutRequest("+461761234567890@jabber.de","Bülent Ceylan");
+//                mService.notifyAboutDecline("Kunibert Schlömpel");
+//                isActive = true;
+//            }
+//        });
 
     }
 
@@ -287,6 +286,13 @@ public class ContactListActivity extends FragmentActivity
 
         Intent intent = new Intent(this, FMFCommunicationService.class);
         bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+
+        if(getIntent() != null) {
+            if(getIntent().getAction() != null) {
+                if(getIntent().getAction().equals(ACTION_SHOW_CONTACTS))
+                    getAllContactNumbers();
+            }
+        }
 
         //TODO (Martin): when mLoggedIn = true, check for roster updates and add rosterlistener
     }
@@ -363,7 +369,6 @@ public class ContactListActivity extends FragmentActivity
         }
     }
 
-    private class DataBaseLookupTask extends AsyncTask< Void, Void, Void > {
     public void getAllContactNumbers(){
         // Hashmap for ListView
         registeredList = new ArrayList<HashMap<String, String>>();

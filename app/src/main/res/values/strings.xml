@@ -17,6 +17,8 @@
     <string name="title_not_connected">Keine Verbindung</string>
     <string name="message_not_connected">Du bist nicht verbunden.\nAnfrage kann nicht gesendet werden.</string>
 
+    <string name="title_request_declined">Anfrage abgelehnt</string>
+
     <string name="title_activity_registration">Registrierung</string>
     <string name="edit_number">+491234567890</string>
     <string name="button_weiter">Weiter</string>

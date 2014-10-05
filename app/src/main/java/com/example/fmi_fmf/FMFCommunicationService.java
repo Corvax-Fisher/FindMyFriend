@@ -67,21 +67,13 @@ public class FMFCommunicationService extends Service implements LocationListener
     public static final String USERNAME = "username";
     public static final String PASSWORD = "password";
 
-    public static final String INFO_CONNECTED = "connected info";
-
     public static final String EXTRA_JABBER_ID = "jabber id";
     public static final String EXTRA_FULL_NAME = "full name";
 
     public static final String ACTION_PROCESS_REQUEST_RESULT = "process request result";
     public static final String EXTRA_REQUEST_ACCEPTED = "request accepted";
 
-//    public static final String INFO_CONNECTED = "connected info";
-//
-//    public static final String ACTION_ACCEPT_NOTIFICATION_CANCELED = "accept notification canceled";
-
     public enum RET_CODE {OK, NO_PROVIDER, NOT_CONNECTED};
-//    public enum N_INFO {NONE, REQUEST, ACCEPT};
-//    private N_INFO mNotificationInfo;
 
     private LocationManager mLocationManager;
     private XMPPConnection mConnection;
@@ -97,8 +89,7 @@ public class FMFCommunicationService extends Service implements LocationListener
     private String mJabberId;
     private Map<Integer,String> mFullNameFromNotificationId;
     private NotificationCompat.Builder mAcceptedNotificationBuilder;
-//    private boolean mAcceptNotificationExists = false;
-//
+
 //    private ArrayList<FMFListEntry> mContactListEntries;
 //    private Map<String,Integer> mRosterMap;
     private Set<Integer> mExistingNotifications;
@@ -212,7 +203,7 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     public void sendAccept(String myFriendsJabberId) {
         if(ContactListActivity.D)
-            Toast.makeText(getApplicationContext(),"sending an accept to " + myFriendsRealName,Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(),"sending an accept to " + myFriendsJabberId,Toast.LENGTH_SHORT).show();
 
         if(mAcceptedJabberIds == null) mAcceptedJabberIds = new ArrayList<String>();
         mAcceptedJabberIds.add(myFriendsJabberId);
@@ -337,22 +328,44 @@ public class FMFCommunicationService extends Service implements LocationListener
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
 
-        if(intent.getAction().equals(ACTION_REGISTER))
-        {
-            String phoneNr = intent.getStringExtra(EXTRA_PHONE_NUMBER);
-            //TODO (Farah): register
-        }
-        if(intent.hasExtra(EXTRA_SEND_STOP))
-        {
-            Toast.makeText(getApplicationContext(),"sending stop to "+intent.getStringExtra("send stop to"),Toast.LENGTH_SHORT).show();
-            try {
-                if(mReceiverChat != null) mReceiverChat.sendMessage("S");
-            } catch (XMPPException e) {
-                e.printStackTrace();
-            } catch (SmackException.NotConnectedException e) {
-                e.printStackTrace();
-            }
+        if(intent != null){
+            if(intent.getAction() != null) {
+                if (intent.getAction().equals(ACTION_REGISTER)) {
+                    String phoneNr = intent.getStringExtra(EXTRA_PHONE_NUMBER);
+                    Log.d("Phone Number", phoneNr);
 
+                    SharedPreferences sharedPref = getSharedPreferences("FMFNumbers", Context.MODE_PRIVATE);
+
+                    SharedPreferences.Editor editor = sharedPref.edit();
+                    editor.putString(EXTRA_PHONE_NUMBER, phoneNr);
+                    editor.commit();
+
+                    String username = sharedPref.getString(USERNAME, "");
+                    String password = sharedPref.getString(PASSWORD, "");
+
+                    if (!username.isEmpty() && !password.isEmpty()) {
+                        connect(username, password);
+                    } else {
+                        String genpass = generatePassword().toString();
+                        String genuser = "fmi" + phoneNr.toString();
+
+                        SharedPreferences.Editor user_pass_editor = sharedPref.edit();
+                        user_pass_editor.putString(USERNAME, genuser);
+                        user_pass_editor.putString(PASSWORD, genpass);
+                        user_pass_editor.commit();
+                    }
+                } else if (intent.getAction().equals(ACTION_CANCEL_NOTIFICATION)) {
+                    int notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, 0);
+                    if (notificationId != 0) {
+//                        mNotificationManager.cancel(notificationId);
+                        mExistingNotifications.remove(notificationId);
+                    }
+                } else if (intent.getAction().equals(ACTION_PROCESS_REQUEST_RESULT)) {
+                    if (intent.getBooleanExtra(EXTRA_REQUEST_ACCEPTED, false))
+                        sendAccept(intent.getStringExtra(EXTRA_JABBER_ID));
+                    else sendDecline(intent.getStringExtra(EXTRA_JABBER_ID));
+                }
+            }
             if(intent.hasExtra(EXTRA_SEND_STOP))
             {
                 Toast.makeText(getApplicationContext(),"sending stop to "+intent.getStringExtra("send stop to"),Toast.LENGTH_SHORT).show();
