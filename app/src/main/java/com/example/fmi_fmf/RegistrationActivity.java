@@ -5,16 +5,19 @@ import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.telephony.SmsManager;
+import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.apache.http.NameValuePair;
@@ -24,6 +27,8 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class RegistrationActivity extends Activity {
     private static final String LOG_TAG = RegistrationActivity.class.getSimpleName();
@@ -32,16 +37,17 @@ public class RegistrationActivity extends Activity {
     private String pin = generatePIN();
 
     public static final String EXTRA_PHONE_NUMBER = "phone number";
+    private static final String SMS_RECEIVED = "android.provider.Telephony.SMS_RECEIVED";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
         //sharedpreferences zum testen löschen, damit registration activity aktiv wird
-//        SharedPreferences pref = getApplicationContext().getSharedPreferences("FMFNumbers", Context.MODE_PRIVATE);
-//        SharedPreferences.Editor editor = pref.edit();
-//        editor.clear();
-//        editor.commit();
+        SharedPreferences pref = getApplicationContext().getSharedPreferences("FMFNumbers", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = pref.edit();
+        editor.clear();
+        editor.commit();
 
         SharedPreferences sharedPref = getSharedPreferences("FMFNumbers",Context.MODE_PRIVATE);
         String numberSaved = "";//sharedPref.getString(EXTRA_PHONE_NUMBER,"");
@@ -94,6 +100,7 @@ public class RegistrationActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
+
     }
 
     @Override
@@ -114,17 +121,44 @@ public class RegistrationActivity extends Activity {
         EditText mobileNo = (EditText) findViewById(R.id.mobile_no);
         String number = mobileNo.getText().toString();
 
-    /** Creating a pending intent which will be broadcasted when an sms message is successfully sent */
-            PendingIntent piSent = PendingIntent.getBroadcast(getBaseContext(), 0, new Intent("sent_msg") , 0);
+        SMSBroadcastReceiver mIntentReceiver = new SMSBroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (intent.getAction().equals(SMS_RECEIVED)) {
+                    Bundle bundle = intent.getExtras();
+                    if (bundle != null) {
+                        Object[] pdus = (Object[])bundle.get("pdus");
+                        final SmsMessage[] messages = new SmsMessage[pdus.length];
+                        for (int i = 0; i < pdus.length; i++) {
+                            messages[i] = SmsMessage.createFromPdu((byte[])pdus[i]);
+                        }
+                        if (messages.length > -1) {
+                            String message = messages[0].getMessageBody();
+                            Pattern intsOnly = Pattern.compile("\\d+");
+                            Matcher makeMatch = intsOnly.matcher(message);
+                            makeMatch.find();
+                            String result = makeMatch.group();
+                            TextView text = (TextView) findViewById(R.id.code_no);
+                            text.setText(result);
+                        }
+                    }
+                }
+            }
+        };
+        getBaseContext().registerReceiver(mIntentReceiver, new IntentFilter("android.provider.Telephony.SMS_RECEIVED"));
 
-    /** Creating a pending intent which will be broadcasted when an sms message is successfully delivered */
-            PendingIntent piDelivered = PendingIntent.getBroadcast(getBaseContext(), 0, new Intent("delivered_msg"), 0);
+        /** Creating a pending intent which will be broadcasted when an sms message is successfully sent */
+        PendingIntent piSent = PendingIntent.getBroadcast(getBaseContext(), 0, new Intent("sent_msg") , 0);
 
-    /** Getting an instance of SmsManager to sent sms message from the application*/
-            SmsManager smsManager = SmsManager.getDefault();
+        /** Creating a pending intent which will be broadcasted when an sms message is successfully delivered */
+        PendingIntent piDelivered = PendingIntent.getBroadcast(getBaseContext(), 0, new Intent("delivered_msg"), 0);
 
-    /** Sending the Sms message to the intended party */
-            smsManager.sendTextMessage(number, null, message, piSent, piDelivered);
+        /** Getting an instance of SmsManager to sent sms message from the application*/
+        SmsManager smsManager = SmsManager.getDefault();
+
+        /** Sending the Sms message to the intended party */
+        smsManager.sendTextMessage(number, null, message, piSent, piDelivered);
+
     }
 
     public void compareCode (View view){
@@ -141,6 +175,7 @@ public class RegistrationActivity extends Activity {
             this.startService(i);
 
             new AddNewNumber().execute();
+
         }
         else {
             Toast.makeText(getApplicationContext(), "Verifizierungscode stimmt nicht überein. Versuchen Sie es erneut.", Toast.LENGTH_SHORT).show();
