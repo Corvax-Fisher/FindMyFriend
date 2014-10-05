@@ -44,10 +44,10 @@ public class RegistrationActivity extends Activity {
 
         super.onCreate(savedInstanceState);
         //sharedpreferences zum testen löschen, damit registration activity aktiv wird
-        SharedPreferences pref = getApplicationContext().getSharedPreferences("FMFNumbers", Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = pref.edit();
-        editor.clear();
-        editor.commit();
+//        SharedPreferences pref = getApplicationContext().getSharedPreferences("FMFNumbers", Context.MODE_PRIVATE);
+//        SharedPreferences.Editor editor = pref.edit();
+//        editor.clear();
+//        editor.commit();
 
         SharedPreferences sharedPref = getSharedPreferences("FMFNumbers",Context.MODE_PRIVATE);
         String numberSaved = "";//sharedPref.getString(EXTRA_PHONE_NUMBER,"");
