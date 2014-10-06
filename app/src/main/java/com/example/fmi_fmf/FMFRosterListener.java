@@ -46,7 +46,7 @@ public class FMFRosterListener implements RosterListener {
         //TODO (Martin): update the Presence in the ListView
         boolean status;
 
-        if(presence.getType() == Presence.Type.available) status = FMFListEntry.ONLINE;
+        if(presence.getMode() == Presence.Mode.available) status = FMFListEntry.ONLINE;
         else status = FMFListEntry.OFFLINE;
 
         mContactListAdapter.setStatusByJabberId(presence.getFrom(),status);

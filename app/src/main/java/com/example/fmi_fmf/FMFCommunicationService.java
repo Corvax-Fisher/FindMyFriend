@@ -5,23 +5,33 @@ import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.app.Service;
 import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.provider.ContactsContract;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.util.ArrayMap;
 import android.util.Log;
+import android.widget.ListAdapter;
+import android.widget.ListView;
+import android.widget.SimpleAdapter;
 import android.widget.Toast;
 
+import org.apache.http.NameValuePair;
+import org.jivesoftware.smack.AccountManager;
 import org.jivesoftware.smack.Chat;
 import org.jivesoftware.smack.ChatManager;
 import org.jivesoftware.smack.ChatManagerListener;
@@ -39,11 +49,16 @@ import org.jivesoftware.smack.packet.Packet;
 import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.jivesoftware.smack.util.StringUtils;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
@@ -76,7 +91,7 @@ public class FMFCommunicationService extends Service implements LocationListener
     public enum RET_CODE {OK, NO_PROVIDER, NOT_CONNECTED};
 
     private LocationManager mLocationManager;
-    private XMPPConnection mConnection;
+    private XMPPConnection mConnection = new XMPPTCPConnection("jabber.de");
     private ChatManager mChatManager;
     private Chat mReceiverChat;
     private ArrayList<Chat> mSenderChats;
@@ -115,6 +130,7 @@ public class FMFCommunicationService extends Service implements LocationListener
                 // Creating a criteria object to retrieve provider
                 Criteria criteria = new Criteria();
                 criteria.setAccuracy(Criteria.ACCURACY_FINE);
+                //TODO send Presence packet
                 // Getting the name of the best provider
                 String bestProvider = mLocationManager.getBestProvider(criteria, true);
                 if(bestProvider == null && mProvider != null)
@@ -291,6 +307,29 @@ public class FMFCommunicationService extends Service implements LocationListener
 
         if(ContactListActivity.D) Log.d(LOG_TAG,"Service gestartet");
 
+        initConnection();
+
+        SharedPreferences sharedPref = getSharedPreferences("FMFNumbers", Context.MODE_PRIVATE);
+        String username = sharedPref.getString(USERNAME, "");
+        String password = sharedPref.getString(PASSWORD, "");
+
+        if (!username.isEmpty() && !password.isEmpty()) {
+            try {
+                mConnection.login(username, password);
+
+                //Logged in, now load contacts
+                mContactsAdapter = new ContactListAdapter(this,R.layout.contact_list_item,R.id.nameView);
+                //Loading contacts in Background Thread
+                new LoadAllContacts().execute();
+            } catch (XMPPException e) {
+                e.printStackTrace();
+            } catch (SmackException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
 //        mNotificationInfo = N_INFO.NONE;
         mExistingNotifications = new HashSet<Integer>(3);
         mFullNameFromNotificationId = new ArrayMap<Integer, String>(2);
@@ -318,10 +357,17 @@ public class FMFCommunicationService extends Service implements LocationListener
             }
 
             mLocationManager.requestLocationUpdates(mProvider, 0, 5, this);
-        } /*else {
-            mLocationManager.requestSingleUpdate(LocationManager.NETWORK_PROVIDER,this,null);
-            mLocationManager.requestSingleUpdate(LocationManager.GPS_PROVIDER,this,null);
-        }*/
+        } else {
+            if(mConnection.isAuthenticated()) {
+                Presence p = new Presence(Presence.Type.available);
+                p.setMode(Presence.Mode.xa);
+                try {
+                    mConnection.sendPacket(p);
+                } catch (SmackException.NotConnectedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
         registerReceiver(br, new IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION));
     }
 
@@ -334,26 +380,19 @@ public class FMFCommunicationService extends Service implements LocationListener
                     String phoneNr = intent.getStringExtra(EXTRA_PHONE_NUMBER);
                     Log.d("Phone Number", phoneNr);
 
-                    SharedPreferences sharedPref = getSharedPreferences("FMFNumbers", Context.MODE_PRIVATE);
+                    String genPass = generatePassword();
+                    String genUser = phoneNumberToJabberId(phoneNr);
 
-                    SharedPreferences.Editor editor = sharedPref.edit();
-                    editor.putString(EXTRA_PHONE_NUMBER, phoneNr);
-                    editor.commit();
-
-                    String username = sharedPref.getString(USERNAME, "");
-                    String password = sharedPref.getString(PASSWORD, "");
-
-                    if (!username.isEmpty() && !password.isEmpty()) {
-                        connect(username, password);
-                    } else {
-                        String genpass = generatePassword().toString();
-                        String genuser = "fmi" + phoneNr.toString();
+                    if(createJabberAccount(genUser,genPass)){
+                        Log.d(LOG_TAG,"Account creation successful");
+                        SharedPreferences sharedPref = getSharedPreferences("FMFNumbers", Context.MODE_PRIVATE);
 
                         SharedPreferences.Editor user_pass_editor = sharedPref.edit();
-                        user_pass_editor.putString(USERNAME, genuser);
-                        user_pass_editor.putString(PASSWORD, genpass);
+                        user_pass_editor.putString(USERNAME, genUser);
+                        user_pass_editor.putString(PASSWORD, genPass);
                         user_pass_editor.commit();
-                    }
+                    } else
+                        Log.d(LOG_TAG,"Account creation failed!");
                 } else if (intent.getAction().equals(ACTION_CANCEL_NOTIFICATION)) {
                     int notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, 0);
                     if (notificationId != 0) {
@@ -402,6 +441,23 @@ public class FMFCommunicationService extends Service implements LocationListener
         }
         return null;
     }
+
+    private boolean createJabberAccount(String user, String pass) {
+        try {
+            if(AccountManager.getInstance(mConnection).supportsAccountCreation()) {
+                AccountManager.getInstance(mConnection).createAccount(user, pass);
+                return true;
+            } else Log.d(LOG_TAG,"SERVER DOESN'T SUPPORT ACCOUNT CREATION!");
+        } catch (SmackException.NoResponseException e) {
+            e.printStackTrace();
+        } catch (XMPPException.XMPPErrorException e) {
+            e.printStackTrace();
+        } catch (SmackException.NotConnectedException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
     //TODO change back to private after test
     public void notifyAboutRequest(String jabberId, String fullName){
         if(ContactListActivity.isActive)
@@ -559,9 +615,22 @@ public class FMFCommunicationService extends Service implements LocationListener
         }
     };
 
-    public void setConnection(XMPPConnection connection) {
-        this.mConnection = connection;
-        if (connection != null) {
+    public void initConnection() {
+        if (mConnection != null) {
+            try {
+                mConnection.connect();
+            } catch (SmackException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (XMPPException e) {
+                e.printStackTrace();
+            }
+
+            fillInJabberIdAndStatus();
+
+            mConnection.getRoster().addRosterListener(new FMFRosterListener(mContactsAdapter));
+
             mChatManager = ChatManager.getInstanceFor(mConnection);
             if(mChatManager != null) mChatManager.addChatListener( new ChatManagerListener() {
                 @Override
@@ -588,7 +657,7 @@ public class FMFCommunicationService extends Service implements LocationListener
             });
             // Add a packet listener to get messages sent to us
             PacketFilter filter = new MessageTypeFilter(Message.Type.chat);
-            connection.addPacketListener(new PacketListener() {
+            mConnection.addPacketListener(new PacketListener() {
                 @Override
                 public void processPacket(Packet packet) {
                     Message message = (Message) packet;
@@ -617,7 +686,6 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     private void fillInJabberIdAndStatus() {
         if(mConnection.isAuthenticated()) {
-            mContactsAdapter = new ContactListAdapter(this,R.layout.contact_list_item,R.id.nameView);
             Collection<RosterEntry> rosterEntries = mConnection.getRoster().getEntries();
 
             for(RosterEntry rosterEntry: rosterEntries){
@@ -630,122 +698,122 @@ public class FMFCommunicationService extends Service implements LocationListener
         }
     }
 
-    public void connect(final String username, final String password) {
-
-        String[] userAndHost = username.split("@");
-        if(userAndHost.length != 2)
-        {
-            if(ContactListActivity.D)
-                Log.d(LOG_TAG, "Incorrect username. Cannot connect to Server.");
-            return;
-        }
-        final String host = userAndHost[1];
-
-        final ProgressDialog dialog = ProgressDialog.show(this,
-                "Connecting...", "Please wait...", false);
-
-        Thread t = new Thread(new Runnable() {
-
-            @Override
-            public void run() {
-                // Create a connection
-                ConnectionConfiguration connConfig = new ConnectionConfiguration(
-                        host, 5222, "FMF");
-                //connConfig.setSecurityMode(ConnectionConfiguration.SecurityMode.enabled);
-                XMPPConnection connection = new XMPPTCPConnection(connConfig);
-
-                try {
-                    connection.connect();
-
-                } catch (XMPPException ex) {
-                    Log.e(LOG_TAG, "Failed to connect to "
-                            + connection.getHost());
-                    Log.e(LOG_TAG, ex.toString());
-                    setConnection(null);
-                } catch (SmackException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                } catch (IOException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-                try {
-                    // SASLAuthentication.supportSASLMechanism("PLAIN", 0);
-                    connection.login(username, password);
-                    Log.i(LOG_TAG,
-                            "Connected to " + connection.getServiceName());
-                    Log.i(LOG_TAG,
-                            "Logged in as " + connection.getUser());
-                    //addRosterListener(connection);
-
-                    //TODO (Martin): send Presence unavailable when mProvider == null
-                    // Set the status to available
-                    Presence presence = new Presence(Presence.Type.available);
-                    presence.setMode(Presence.Mode.available);
-                    presence.setStatus("Online");
-//					connection.sendPacket(presence);
-
-                    setConnection(connection);
-
-//                    Intent i = new Intent(INFO_CONNECTED);
-//                    LocalBroadcastManager.getInstance(FMFCommunicationService.this).sendBroadcast(i);
-
-                    fillInJabberIdAndStatus();
-
-//                    if(mConnection != null)
-//                        mConnection
-//                                .getRoster()
-//                                .addRosterListener(new FMFRosterListener(mContactListEntries,mRosterMap));
-
-                    //TODO (Martin): remove this code sequence
-                    Collection<RosterEntry> entries = connection.getRoster().getEntries();
-                    for (RosterEntry entry : entries) {
-                        Log.d(LOG_TAG,
-                                "--------------------------------------");
-                        Log.d(LOG_TAG, "RosterEntry " + entry);
-                        Log.d(LOG_TAG,
-                                "User: " + entry.getUser());
-                        Log.d(LOG_TAG,
-                                "Name: " + entry.getName());
-                        Log.d(LOG_TAG,
-                                "Status: " + entry.getStatus());
-                        Log.d(LOG_TAG,
-                                "Type: " + entry.getType());
-                        Presence entryPresence = connection.getRoster().getPresence(entry
-                                .getUser());
-
-                        Log.d(LOG_TAG, "Presence Status: "
-                                + entryPresence.getStatus());
-                        Log.d(LOG_TAG, "Presence Type: "
-                                + entryPresence.getType());
-                        Presence.Type type = entryPresence.getType();
-                        if (type == Presence.Type.available)
-                            Log.d(LOG_TAG, "Presence AVIALABLE");
-                        Log.d(LOG_TAG, "Presence : "
-                                + entryPresence);
-
-                    }
-
-                } catch (XMPPException ex) {
-                    Log.e(LOG_TAG, "Failed to log in as "
-                            + username);
-                    Log.e(LOG_TAG, ex.toString());
-                    setConnection(null);
-                } catch (SmackException e) {
-                    // TODO Auto-generated catch block
-                    Log.e(LOG_TAG, e.toString());
-                    e.printStackTrace();
-                } catch (IOException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-
-                dialog.dismiss();
-            }
-        });
-        t.start();
-        dialog.show();
-    }
+//    public void connect(final String username, final String password) {
+//
+//        String[] userAndHost = username.split("@");
+//        if(userAndHost.length != 2)
+//        {
+//            if(ContactListActivity.D)
+//                Log.d(LOG_TAG, "Incorrect username. Cannot connect to Server.");
+//            return;
+//        }
+//        final String host = userAndHost[1];
+//
+//        final ProgressDialog dialog = ProgressDialog.show(this,
+//                "Connecting...", "Please wait...", false);
+//
+//        Thread t = new Thread(new Runnable() {
+//
+//            @Override
+//            public void run() {
+//                // Create a connection
+//                ConnectionConfiguration connConfig = new ConnectionConfiguration(
+//                        host, 5222, "FMF");
+//                //connConfig.setSecurityMode(ConnectionConfiguration.SecurityMode.enabled);
+//                XMPPConnection connection = new XMPPTCPConnection(connConfig);
+//
+//                try {
+//                    connection.connect();
+//
+//                } catch (XMPPException ex) {
+//                    Log.e(LOG_TAG, "Failed to connect to "
+//                            + connection.getHost());
+//                    Log.e(LOG_TAG, ex.toString());
+//                    setConnection(null);
+//                } catch (SmackException e) {
+//                    // TODO Auto-generated catch block
+//                    e.printStackTrace();
+//                } catch (IOException e) {
+//                    // TODO Auto-generated catch block
+//                    e.printStackTrace();
+//                }
+//                try {
+//                    // SASLAuthentication.supportSASLMechanism("PLAIN", 0);
+//                    connection.login(username, password);
+//                    Log.i(LOG_TAG,
+//                            "Connected to " + connection.getServiceName());
+//                    Log.i(LOG_TAG,
+//                            "Logged in as " + connection.getUser());
+//                    //addRosterListener(connection);
+//
+//                    //TODO (Martin): send Presence unavailable when mProvider == null
+//                    // Set the status to available
+//                    Presence presence = new Presence(Presence.Type.available);
+//                    presence.setMode(Presence.Mode.available);
+//                    presence.setStatus("Online");
+////					connection.sendPacket(presence);
+//
+//                    setConnection(connection);
+//
+////                    Intent i = new Intent(INFO_CONNECTED);
+////                    LocalBroadcastManager.getInstance(FMFCommunicationService.this).sendBroadcast(i);
+//
+//                    fillInJabberIdAndStatus();
+//
+////                    if(mConnection != null)
+////                        mConnection
+////                                .getRoster()
+////                                .addRosterListener(new FMFRosterListener(mContactListEntries,mRosterMap));
+//
+//                    //TODO (Martin): remove this code sequence
+//                    Collection<RosterEntry> entries = connection.getRoster().getEntries();
+//                    for (RosterEntry entry : entries) {
+//                        Log.d(LOG_TAG,
+//                                "--------------------------------------");
+//                        Log.d(LOG_TAG, "RosterEntry " + entry);
+//                        Log.d(LOG_TAG,
+//                                "User: " + entry.getUser());
+//                        Log.d(LOG_TAG,
+//                                "Name: " + entry.getName());
+//                        Log.d(LOG_TAG,
+//                                "Status: " + entry.getStatus());
+//                        Log.d(LOG_TAG,
+//                                "Type: " + entry.getType());
+//                        Presence entryPresence = connection.getRoster().getPresence(entry
+//                                .getUser());
+//
+//                        Log.d(LOG_TAG, "Presence Status: "
+//                                + entryPresence.getStatus());
+//                        Log.d(LOG_TAG, "Presence Type: "
+//                                + entryPresence.getType());
+//                        Presence.Type type = entryPresence.getType();
+//                        if (type == Presence.Type.available)
+//                            Log.d(LOG_TAG, "Presence AVIALABLE");
+//                        Log.d(LOG_TAG, "Presence : "
+//                                + entryPresence);
+//
+//                    }
+//
+//                } catch (XMPPException ex) {
+//                    Log.e(LOG_TAG, "Failed to log in as "
+//                            + username);
+//                    Log.e(LOG_TAG, ex.toString());
+//                    setConnection(null);
+//                } catch (SmackException e) {
+//                    // TODO Auto-generated catch block
+//                    Log.e(LOG_TAG, e.toString());
+//                    e.printStackTrace();
+//                } catch (IOException e) {
+//                    // TODO Auto-generated catch block
+//                    e.printStackTrace();
+//                }
+//
+//                dialog.dismiss();
+//            }
+//        });
+//        t.start();
+//        dialog.show();
+//    }
 
     @Override
     public void onLocationChanged(Location location) {
@@ -770,6 +838,7 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     @Override
     public void onStatusChanged(String provider, int status, Bundle extras) {
+        //TODO send Presence packet
         if(ContactListActivity.D)
             Toast.makeText(this,"onStatusChanged",Toast.LENGTH_SHORT).show();
     }
@@ -781,6 +850,8 @@ public class FMFCommunicationService extends Service implements LocationListener
     @Override
     public void onProviderDisabled(String provider) {
         //TODO (Martin): this might be obsolete because we're receiving PROVIDERS_CHANGED_ACTION
+
+        //TODO send Presence packet
         if(ContactListActivity.D)
             Toast.makeText(this,"onProviderDisabled",Toast.LENGTH_SHORT).show();
         if(provider.equals(mProvider))
@@ -807,4 +878,161 @@ public class FMFCommunicationService extends Service implements LocationListener
         return genpass;
 
     }
+
+    /**
+     * Background Async Task to Load all product by making HTTP Request
+     * */
+    class LoadAllContacts extends AsyncTask<String, String, String> {
+
+        // url to get all products list
+        private String url_all_numbers = "http://farahzeb.de/fmi/get_all_numbers.php";
+
+        // JSON Node names
+        private static final String TAG_SUCCESS = "success";
+        private static final String TAG_PRODUCTS = "registeredNumbers";
+        private static final String TAG_RID = "rID";
+        private static final String TAG_NUMBER = "registeredNumber";
+
+        // products JSONArray
+        JSONArray contacts = null;
+        /**
+         * Before starting background thread Show Progress Dialog
+         * */
+//        @Override
+//        protected void onPreExecute() {
+//            super.onPreExecute();
+//            pDialog = new ProgressDialog(ContactListActivity.this);
+//            pDialog.setMessage("Kontakte werden geladen. Bitte warten...");
+//            pDialog.setIndeterminate(false);
+//            pDialog.setCancelable(false);
+//            pDialog.show();
+//        }
+
+        /**
+         * getting All products from url
+         * */
+        protected String doInBackground(String... args) {
+            // Building Parameters
+            List<NameValuePair> params = new ArrayList<NameValuePair>();
+            // getting JSON string from URL
+            JSONParser jParser = new JSONParser();
+            JSONObject json = jParser.makeHttpRequest(url_all_numbers, "GET", params);
+
+            try {
+                // Checking for SUCCESS TAG
+                int success = json.getInt(TAG_SUCCESS);
+
+                if (success == 1) {
+                    // products found
+                    // Getting Array of Products
+                    contacts = json.getJSONArray(TAG_PRODUCTS);
+
+                    //ownNumber
+                    SharedPreferences sharedPref = getSharedPreferences("FMFNumbers",Context.MODE_PRIVATE);
+                    String myNumber = sharedPref.getString(USERNAME,"");
+                    myNumber = jabberIdToPhoneNumber(myNumber);
+
+                    // looping through All Products
+                    for (int i = 0; i < contacts.length(); i++) {
+                        JSONObject c = contacts.getJSONObject(i);
+
+                        // Storing each json item in variable
+                        String id = c.getString(TAG_RID);
+                        String number = c.getString(TAG_NUMBER);
+
+                        //getting all registered numbers and searching for their contactname in phone
+                        // own number shouldnt be in the contact list activity
+
+                        if (!number.equals(myNumber)) {
+                            String contactname = getContactName(getApplicationContext(), number);
+
+                            // creating new HashMap
+                            HashMap<String, String> map = new HashMap<String, String>();
+
+                            // adding each child node to HashMap key => value
+                            map.put(TAG_RID, id);
+                            map.put(TAG_NUMBER, contactname);
+
+                            // adding HashList to ArrayList
+                            if(contactname != null){
+                                String jabberId = phoneNumberToJabberId(number);
+                                mContactsAdapter.add(new FMFListEntry(jabberId,contactname));
+                                RosterEntry roster = mConnection.getRoster().getEntry(jabberId);
+                                if(roster == null){
+                                    try {
+                                        mConnection.getRoster().createEntry(jabberId,contactname,null);
+                                    } catch (SmackException.NotLoggedInException e) {
+                                        e.printStackTrace();
+                                    } catch (SmackException.NoResponseException e) {
+                                        e.printStackTrace();
+                                    } catch (XMPPException.XMPPErrorException e) {
+                                        e.printStackTrace();
+                                    } catch (SmackException.NotConnectedException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                                Presence p = mConnection.getRoster().getPresence(jabberId);
+                                if(p.getMode() == Presence.Mode.available)
+                                    mContactsAdapter.setStatusByJabberId(jabberId,true);
+                            }
+                        }
+
+                    }
+                } else {
+                    // no contacts found
+                    Log.d("no contacts","no contacts found");
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            return null;
+        }
+
+        /**
+         * After completing background task Dismiss the progress dialog
+         * **/
+        protected void onPostExecute(String file_url) {
+            // dismiss the dialog after getting all products
+//            pDialog.dismiss();
+            // updating UI from Background Thread
+//            runOnUiThread(new Runnable() {
+//
+//                public void run() {
+//                    /**
+//                     * Updating parsed JSON data into ListView
+//                     * */
+//                    ListAdapter adapter = new SimpleAdapter(
+//                            ContactListActivity.this, registeredList,
+//                            R.layout.single_contact, new String[]{TAG_RID,
+//                            TAG_NUMBER},
+//                            new int[]{R.id.rid, R.id.contact_number});
+//                    // updating listview
+//                    ListView lv = (ListView) findViewById(R.id.contact_list);
+//                    lv.setAdapter(adapter);
+//                }
+//            });
+
+        }
+        private String getContactName(Context context, String phoneNumber) {
+            ContentResolver cr = context.getContentResolver();
+            Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phoneNumber));
+            Cursor cursor = cr.query(uri, new String[]{ContactsContract.PhoneLookup.DISPLAY_NAME}, null, null, null);
+            if (cursor == null) {
+                return null;
+            }
+            String contactName = null;
+            if(cursor.moveToFirst()) {
+                contactName = cursor.getString(cursor.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME));
+            }
+
+            if(cursor != null && !cursor.isClosed()) {
+                cursor.close();
+            }
+
+            return contactName;
+        }
+    }
+
+
 }

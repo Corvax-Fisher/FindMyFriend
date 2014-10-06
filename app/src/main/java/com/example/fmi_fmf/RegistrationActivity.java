@@ -50,18 +50,18 @@ public class RegistrationActivity extends Activity {
 //        editor.commit();
 
         SharedPreferences sharedPref = getSharedPreferences("FMFNumbers",Context.MODE_PRIVATE);
-        String numberSaved = "";//sharedPref.getString(EXTRA_PHONE_NUMBER,"");
+        String userName = sharedPref.getString(FMFCommunicationService.USERNAME,"");
 //        numberSaved = "+4917696045242";
         Log.d(LOG_TAG,pin);
 
-        if(numberSaved.isEmpty()){
+        if(userName.isEmpty()){
             setContentView(R.layout.activity_registration);
             setSimPhoneNumber();
         }
         else {
-            Intent i = new Intent(this,ContactListActivity.class)
-                    .setAction(ContactListActivity.ACTION_SHOW_CONTACTS);
-            this.startActivity(i);
+//            Intent i = new Intent(this,ContactListActivity.class)
+//                    .setAction(ContactListActivity.ACTION_SHOW_CONTACTS);
+//            this.startActivity(i);
             finish();
         }
     }
@@ -140,12 +140,18 @@ public class RegistrationActivity extends Activity {
                             String result = makeMatch.group();
                             TextView text = (TextView) findViewById(R.id.code_no);
                             text.setText(result);
+                            //TODO Farah: could you trigger the registration process here automatically
+                            //TODO so the user doesn't need to press the button to register?
+                            //TODO Additionally I would deactivate the editability.
                         }
                     }
                 }
             }
         };
-        getBaseContext().registerReceiver(mIntentReceiver, new IntentFilter("android.provider.Telephony.SMS_RECEIVED"));
+        //TODO Farah: unregister the receiver when no longer needed (e.g. in onStop() )
+        //TODO and maybe replace getBaseContext() with "this" in the next three lines of code
+        //TODO (I've read one shouldn't use getBaseContext() )
+        getBaseContext().registerReceiver(mIntentReceiver, new IntentFilter(SMS_RECEIVED));
 
         /** Creating a pending intent which will be broadcasted when an sms message is successfully sent */
         PendingIntent piSent = PendingIntent.getBroadcast(getBaseContext(), 0, new Intent("sent_msg") , 0);
@@ -173,7 +179,10 @@ public class RegistrationActivity extends Activity {
                     .setAction(FMFCommunicationService.ACTION_REGISTER)
                     .putExtra(FMFCommunicationService.EXTRA_PHONE_NUMBER,number);
             this.startService(i);
-
+            //TODO Martin: Add a BroadcastReceiver and move next line of code to this receiver.
+            //TODO the BroadcastReceiver will get an Intent from FMFCommunicationService
+            //TODO with the Information if the Jabber account creation succeeded or not
+            //TODO only in case it succeeded the number should be added to the database
             new AddNewNumber().execute();
 
         }

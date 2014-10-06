@@ -17,9 +17,9 @@ public class FMFListEntry {
         status = OFFLINE;
     }
 
-    FMFListEntry(String fullName) {
+    FMFListEntry(String jabberId, String fullName) {
         this.realName = fullName;
-        this.jabberID = "";
+        this.jabberID = jabberId;
         this.status = OFFLINE;
     }
 
