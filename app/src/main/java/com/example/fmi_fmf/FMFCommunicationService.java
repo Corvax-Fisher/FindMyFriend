@@ -59,6 +59,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.ExecutionException;
 
 public class FMFCommunicationService extends Service implements LocationListener {
 
@@ -89,7 +90,12 @@ public class FMFCommunicationService extends Service implements LocationListener
     public static final String ACTION_PROCESS_DB_REGISTRATION_RESULT = "process db registration result";
 
     private final Integer CONNECT = 1;
-    private final Integer LOGIN = 2;
+    private final Integer CONNECTED = 2;
+    private final Integer NOT_CONNECTED = 3;
+    private final Integer LOGIN = 4;
+    private final Integer LOGGED_IN = 5;
+    private final Integer NOT_LOGGED_IN = 6;
+    private AsyncTask<Integer, Void, Integer> mConnectionTask;
 
     public enum RET_CODE {OK, NO_PROVIDER, NOT_CONNECTED};
 
@@ -342,14 +348,29 @@ public class FMFCommunicationService extends Service implements LocationListener
                     mPassword = generatePassword();
                     Log.d(LOG_TAG,"Generated Password: "+ mPassword);
 
-                    boolean registrationSuccessful = createJabberAccount(mUserName, mPassword);
-                    if(registrationSuccessful){
-                        Log.d(LOG_TAG,"Account creation successful");
-                    } else
-                        Log.d(LOG_TAG,"Account creation failed!");
-                    LocalBroadcastManager.getInstance(this).sendBroadcast(
-                            new Intent(RegistrationActivity.ACTION_PROCESS_JABBER_REGISTRATION_RESULT)
-                            .putExtra(EXTRA_REGISTRATION_SUCCESSFUL,registrationSuccessful));
+                    Integer result = -1;
+                    try {
+                        result = (Integer) mConnectionTask.get();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    } catch (ExecutionException e) {
+                        e.printStackTrace();
+                    }
+                    if(result.equals(CONNECTED)) {
+                        boolean registrationSuccessful = createJabberAccount(mUserName, mPassword);
+                        if(registrationSuccessful){
+                            Log.d(LOG_TAG,"Account creation successful");
+                        } else
+                            Log.d(LOG_TAG,"Account creation failed!");
+                        LocalBroadcastManager.getInstance(this).sendBroadcast(
+                                new Intent(RegistrationActivity.ACTION_PROCESS_JABBER_REGISTRATION_RESULT)
+                                .putExtra(EXTRA_REGISTRATION_SUCCESSFUL, registrationSuccessful));
+                    } else {
+                        Log.d(LOG_TAG, "Connect to server failed!");
+                        LocalBroadcastManager.getInstance(this).sendBroadcast(
+                                new Intent(RegistrationActivity.ACTION_PROCESS_JABBER_REGISTRATION_RESULT)
+                                        .putExtra(EXTRA_REGISTRATION_SUCCESSFUL, false));
+                    }
                 } else if(intent.getAction().equals(ACTION_CANCEL_NOTIFICATION)) {
                     int notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, 0);
                     if (notificationId != 0) {
@@ -583,7 +604,7 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     public void initConnection() {
         if (mConnection != null)
-            new XMPPConnectionTask().execute(CONNECT);
+            mConnectionTask = new XMPPConnectionTask().execute(CONNECT);
     }
 
     private void tryToLogIn() {
@@ -961,6 +982,7 @@ public class FMFCommunicationService extends Service implements LocationListener
             if(params[0].equals(CONNECT)) {
                 try {
                     mConnection.connect();
+                    return CONNECTED;
                 } catch (SmackException e) {
                     e.printStackTrace();
                 } catch (IOException e) {
@@ -968,9 +990,11 @@ public class FMFCommunicationService extends Service implements LocationListener
                 } catch (XMPPException e) {
                     e.printStackTrace();
                 }
+                return  NOT_CONNECTED;
             } else if(params[0].equals(LOGIN)) {
                 try {
                     mConnection.login(mUserName, mPassword);
+                    return LOGGED_IN;
                 } catch (XMPPException e) {
                     e.printStackTrace();
                 } catch (SmackException e) {
@@ -978,15 +1002,16 @@ public class FMFCommunicationService extends Service implements LocationListener
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+                return  NOT_LOGGED_IN;
             }
-            return params[0];
+            return  -1;
         }
 
         @Override
-        protected void onPostExecute(Integer task) {
-            super.onPostExecute(task);
+        protected void onPostExecute(Integer result) {
+            super.onPostExecute(result);
 
-            if(task.equals(CONNECT)) {
+            if(result.equals(CONNECTED)) {
                 mConnection.getRoster().addRosterListener(new FMFRosterListener(mContactsAdapter));
 
                 mChatManager = ChatManager.getInstanceFor(mConnection);
@@ -1038,7 +1063,7 @@ public class FMFCommunicationService extends Service implements LocationListener
                         }
                     }
                 }, filter);
-            } else if(task.equals(LOGIN)) {
+            } else if(result.equals(LOGGED_IN)) {
                 if(mConnection.isAuthenticated()) {
                     //Logged in, now load contacts
                     mContactsAdapter = new ContactListAdapter(
