@@ -337,6 +337,7 @@ public class FMFCommunicationService extends Service implements LocationListener
 
                     mUserName = phoneNumberToJabberId(phoneNr);
                     mPassword = generatePassword();
+                    Log.d(LOG_TAG,"Generated Password: "+ mPassword);
 
                     boolean registrationSuccessful = createJabberAccount(mUserName, mPassword);
                     if(registrationSuccessful){
@@ -648,20 +649,7 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     private void tryToLogIn() {
         if(!mConnection.isAuthenticated()) {
-            try {
-                mConnection.login(mUserName, mPassword);
-
-                //Logged in, now load contacts
-                mContactsAdapter = new ContactListAdapter(this,R.layout.contact_list_item,R.id.nameView);
-                //Loading contacts in Background Thread
-                new LoadAllContacts().execute();
-            } catch (XMPPException e) {
-                e.printStackTrace();
-            } catch (SmackException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            new LoginTask().execute();
         }
     }
 
@@ -1027,5 +1015,33 @@ public class FMFCommunicationService extends Service implements LocationListener
         }
     }
 
+    private class LoginTask extends AsyncTask<Void,Void,Void> {
 
+        @Override
+        protected Void doInBackground(Void... params) {
+            try {
+                mConnection.login(mUserName, mPassword);
+            } catch (XMPPException e) {
+                e.printStackTrace();
+            } catch (SmackException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+
+            if(mConnection.isAuthenticated()) {
+                //Logged in, now load contacts
+                mContactsAdapter = new ContactListAdapter(
+                        FMFCommunicationService.this,R.layout.contact_list_item,R.id.nameView);
+                //Loading contacts in Background Thread
+                new LoadAllContacts().execute();
+            }
+        }
+    }
 }
