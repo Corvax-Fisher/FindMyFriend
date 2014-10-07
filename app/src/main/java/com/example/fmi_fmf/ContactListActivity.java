@@ -5,7 +5,7 @@ import android.app.NotificationManager;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
-xt;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
@@ -18,7 +18,9 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
-import android.widget.ListViewpublic class ContactListActivity extends FragmentActivity
+import android.widget.ListView;
+
+public class ContactListActivity extends FragmentActivity
         implements PositionRequestDialogFragment.RequestDialogListener {
 
     private static final String LOG_TAG = ContactListActivity.class.getSimpleName();
