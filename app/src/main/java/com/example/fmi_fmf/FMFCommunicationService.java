@@ -440,10 +440,13 @@ public class FMFCommunicationService extends Service implements LocationListener
                 return true;
             } else Log.d(LOG_TAG,"SERVER DOESN'T SUPPORT ACCOUNT CREATION!");
         } catch (SmackException.NoResponseException e) {
+            Log.e(LOG_TAG,e.getClass().getSimpleName());
             e.printStackTrace();
         } catch (XMPPException.XMPPErrorException e) {
+            Log.e(LOG_TAG,e.getClass().getSimpleName());
             e.printStackTrace();
         } catch (SmackException.NotConnectedException e) {
+            Log.e(LOG_TAG,e.getClass().getSimpleName());
             e.printStackTrace();
         }
         return false;
