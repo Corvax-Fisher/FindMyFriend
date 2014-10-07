@@ -10,6 +10,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.content.LocalBroadcastManager;
 import android.telephony.SmsManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
@@ -109,29 +110,26 @@ public class RegistrationActivity extends Activity {
     @Override
     protected void onStart() {
         super.onStart();
-        registerReceiver(mServiceBroadcastReceiver,
+        LocalBroadcastManager.getInstance(this).registerReceiver(mServiceBroadcastReceiver,
                 new IntentFilter(ACTION_PROCESS_JABBER_REGISTRATION_RESULT));
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-
-        this.registerReceiver(mIntentReceiver, new IntentFilter(SMS_RECEIVED));
+        registerReceiver(mIntentReceiver, new IntentFilter(SMS_RECEIVED));
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-
-        this.unregisterReceiver(mIntentReceiver);
-
+        unregisterReceiver(mIntentReceiver);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        unregisterReceiver(mServiceBroadcastReceiver);
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mServiceBroadcastReceiver);
     }
 
     public void setSimPhoneNumber () {

@@ -346,13 +346,13 @@ public class FMFCommunicationService extends Service implements LocationListener
                     String phoneNr = intent.getStringExtra(EXTRA_PHONE_NUMBER);
                     Log.d("Phone Number", phoneNr);
 
-                    mUserName = phoneNumberToJabberId(phoneNr);
+                    mUserName = "FMF" + phoneNr;
                     mPassword = generatePassword();
                     Log.d(LOG_TAG,"Generated Password: "+ mPassword);
 
                     Integer result = -1;
                     try {
-                        result = (Integer) mConnectionTask.get();
+                        result = mConnectionTask.get();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     } catch (ExecutionException e) {
@@ -394,9 +394,6 @@ public class FMFCommunicationService extends Service implements LocationListener
                         user_pass_editor.commit();
 
                         tryToLogIn();
-
-                        mUserName = null;
-                        mPassword = null;
                     } else stopSelf();
                 } else if(intent.getAction().equals(ACTION_SEND_STOP)) {
                     Toast.makeText(getApplicationContext(),"sending stop to "+intent.getStringExtra("send stop to"),Toast.LENGTH_SHORT).show();
