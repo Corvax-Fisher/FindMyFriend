@@ -88,6 +88,9 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     public static final String ACTION_PROCESS_DB_REGISTRATION_RESULT = "process db registration result";
 
+    private final Integer CONNECT = 1;
+    private final Integer LOGIN = 2;
+
     public enum RET_CODE {OK, NO_PROVIDER, NOT_CONNECTED};
 
     private LocationManager mLocationManager;
@@ -579,77 +582,13 @@ public class FMFCommunicationService extends Service implements LocationListener
     };
 
     public void initConnection() {
-        if (mConnection != null) {
-            try {
-                mConnection.connect();
-            } catch (SmackException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (XMPPException e) {
-                e.printStackTrace();
-            }
-
-//            fillInJabberIdAndStatus();
-
-            mConnection.getRoster().addRosterListener(new FMFRosterListener(mContactsAdapter));
-
-            mChatManager = ChatManager.getInstanceFor(mConnection);
-            if(mChatManager != null) mChatManager.addChatListener( new ChatManagerListener() {
-                @Override
-                public void chatCreated(Chat chat, boolean createdLocally) {
-                    if(!createdLocally)
-                    {
-                        chat.addMessageListener(mChatMessageListener);
-
-                        boolean chatAlreadyExists = false;
-                        if(mSenderChats == null)
-                        {
-                            mSenderChats = new ArrayList<Chat>();
-                        } else {
-                            for(Chat aChat : mSenderChats)
-                            {
-                                if( aChat.getParticipant().equals(chat.getParticipant()) )
-                                    chatAlreadyExists = true;
-                            }
-                        }
-                        if(!chatAlreadyExists)
-                            mSenderChats.add(chat);
-                    }
-                }
-            });
-            // Add a packet listener to get messages sent to us
-            PacketFilter filter = new MessageTypeFilter(Message.Type.chat);
-            mConnection.addPacketListener(new PacketListener() {
-                @Override
-                public void processPacket(Packet packet) {
-                    Message message = (Message) packet;
-                    if (message.getBody() != null) {
-                        if(message.getBody().equals("P")) {
-                            //Position request
-                        }
-                        String fromName = StringUtils.parseBareAddress(message
-                                .getFrom());
-                        Log.i(LOG_TAG, "Text Received " + message.getBody()
-                                + " from " + fromName);
-//						messages.add(fromName + ":");
-//						messages.add(message.getBody());
-//						// Add the incoming message to the list view
-//						mHandler.post(new Runnable() {
-//							public void run() {
-//								setListAdapter();
-//							}
-//						});
-                    }
-                }
-            }, filter);
-
-        }
+        if (mConnection != null)
+            new XMPPConnectionTask().execute(CONNECT);
     }
 
     private void tryToLogIn() {
         if(!mConnection.isAuthenticated()) {
-            new LoginTask().execute();
+            new XMPPConnectionTask().execute(LOGIN);
         }
     }
 
@@ -1015,32 +954,98 @@ public class FMFCommunicationService extends Service implements LocationListener
         }
     }
 
-    private class LoginTask extends AsyncTask<Void,Void,Void> {
+    private class XMPPConnectionTask extends AsyncTask<Integer,Void,Integer> {
 
         @Override
-        protected Void doInBackground(Void... params) {
-            try {
-                mConnection.login(mUserName, mPassword);
-            } catch (XMPPException e) {
-                e.printStackTrace();
-            } catch (SmackException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
+        protected Integer doInBackground(Integer... params) {
+            if(params[0].equals(CONNECT)) {
+                try {
+                    mConnection.connect();
+                } catch (SmackException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (XMPPException e) {
+                    e.printStackTrace();
+                }
+            } else if(params[0].equals(LOGIN)) {
+                try {
+                    mConnection.login(mUserName, mPassword);
+                } catch (XMPPException e) {
+                    e.printStackTrace();
+                } catch (SmackException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
-            return null;
+            return params[0];
         }
 
         @Override
-        protected void onPostExecute(Void aVoid) {
-            super.onPostExecute(aVoid);
+        protected void onPostExecute(Integer task) {
+            super.onPostExecute(task);
 
-            if(mConnection.isAuthenticated()) {
-                //Logged in, now load contacts
-                mContactsAdapter = new ContactListAdapter(
-                        FMFCommunicationService.this,R.layout.contact_list_item,R.id.nameView);
-                //Loading contacts in Background Thread
-                new LoadAllContacts().execute();
+            if(task.equals(CONNECT)) {
+                mConnection.getRoster().addRosterListener(new FMFRosterListener(mContactsAdapter));
+
+                mChatManager = ChatManager.getInstanceFor(mConnection);
+                if(mChatManager != null) mChatManager.addChatListener( new ChatManagerListener() {
+                    @Override
+                    public void chatCreated(Chat chat, boolean createdLocally) {
+                        if(!createdLocally)
+                        {
+                            chat.addMessageListener(mChatMessageListener);
+
+                            boolean chatAlreadyExists = false;
+                            if(mSenderChats == null)
+                            {
+                                mSenderChats = new ArrayList<Chat>();
+                            } else {
+                                for(Chat aChat : mSenderChats)
+                                {
+                                    if( aChat.getParticipant().equals(chat.getParticipant()) )
+                                        chatAlreadyExists = true;
+                                }
+                            }
+                            if(!chatAlreadyExists)
+                                mSenderChats.add(chat);
+                        }
+                    }
+                });
+                // Add a packet listener to get messages sent to us
+                PacketFilter filter = new MessageTypeFilter(Message.Type.chat);
+                mConnection.addPacketListener(new PacketListener() {
+                    @Override
+                    public void processPacket(Packet packet) {
+                        Message message = (Message) packet;
+                        if (message.getBody() != null) {
+                            if(message.getBody().equals("P")) {
+                                //Position request
+                            }
+                            String fromName = StringUtils.parseBareAddress(message
+                                    .getFrom());
+                            Log.i(LOG_TAG, "Text Received " + message.getBody()
+                                    + " from " + fromName);
+//						messages.add(fromName + ":");
+//						messages.add(message.getBody());
+//						// Add the incoming message to the list view
+//						mHandler.post(new Runnable() {
+//							public void run() {
+//								setListAdapter();
+//							}
+//						});
+                        }
+                    }
+                }, filter);
+            } else if(task.equals(LOGIN)) {
+                if(mConnection.isAuthenticated()) {
+                    //Logged in, now load contacts
+                    mContactsAdapter = new ContactListAdapter(
+                            FMFCommunicationService.this,R.layout.contact_list_item,R.id.nameView);
+                    //Loading contacts in Background Thread
+                    new LoadAllContacts().execute();
+                }
             }
         }
     }
