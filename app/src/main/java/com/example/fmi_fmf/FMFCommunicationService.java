@@ -99,8 +99,10 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     public enum RET_CODE {OK, NO_PROVIDER, NOT_CONNECTED};
 
+    private final String XMPP_SERVER = "boese-ban.de";
+
     private LocationManager mLocationManager;
-    private XMPPConnection mConnection = new XMPPTCPConnection("jabber.de");
+    private XMPPConnection mConnection = new XMPPTCPConnection(XMPP_SERVER);
     private ChatManager mChatManager;
     private Chat mReceiverChat;
     private ArrayList<Chat> mSenderChats;
@@ -555,7 +557,7 @@ public class FMFCommunicationService extends Service implements LocationListener
     }
 
     private String phoneNumberToJabberId(String phoneNumber) {
-        return "FMF" + phoneNumber + "@jabber.de";
+        return "FMF" + phoneNumber + "@" + XMPP_SERVER;
     }
 
     private String jabberIdToPhoneNumber(String jabberId){
