@@ -111,15 +111,17 @@ public class ContactListActivity extends FragmentActivity
             boolean notificationHandled = false;
             if(getIntent() != null)
             {
-                if(getIntent().getAction().equals(ACTION_SHOW_REQUEST_DIALOG))
-                {
-//                    mNotificationTriggered = 1337;
-                    handleNotification(1337);
-                    notificationHandled = true;
-                } else if(getIntent().getAction().equals(ACTION_OPEN_MAP)) {
-//                    mNotificationTriggered = 1338;
-                    handleNotification(1338);
-                    notificationHandled = true;
+                if(getIntent().getAction() != null) {
+                    if(getIntent().getAction().equals(ACTION_SHOW_REQUEST_DIALOG))
+                    {
+    //                    mNotificationTriggered = 1337;
+                        handleNotification(1337);
+                        notificationHandled = true;
+                    } else if(getIntent().getAction().equals(ACTION_OPEN_MAP)) {
+    //                    mNotificationTriggered = 1338;
+                        handleNotification(1338);
+                        notificationHandled = true;
+                    }
                 }
             }
             if(!notificationHandled) {
