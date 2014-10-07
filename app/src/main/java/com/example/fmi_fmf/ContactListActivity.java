@@ -234,6 +234,9 @@ public class ContactListActivity extends FragmentActivity
             mBound = false;
         }
 
+        if(mProgressDialog != null) {
+            if(mProgressDialog.isShowing()) mProgressDialog.dismiss();
+        }
 //        if(mNoProviderDialog != null) {
 //            if(mNoProviderDialog.isVisible()) mNoProviderDialog.dismiss();
 //        }
