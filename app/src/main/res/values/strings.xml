@@ -25,4 +25,7 @@
     <string name="button_reg">Registrieren</string>
     <string name="textTypeNumber">Bitte gebe Deine Handynummer ein.</string>
     <string name="textVerifyNumber">Ein Verifizierungscode wird dir per SMS zugesendet. Bitte hier eingeben:</string>
+
+    <string name="message_registration_succeeded">Die Registrierung war erfolgreich.</string>
+    <string name="message_registration_failed">Bei der Registrierung ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.</string>
 </resources>

@@ -3,6 +3,7 @@ package com.example.fmi_fmf;
 import android.app.Activity;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -39,6 +40,28 @@ public class RegistrationActivity extends Activity {
     public static final String EXTRA_PHONE_NUMBER = "phone number";
     private static final String SMS_RECEIVED = "android.provider.Telephony.SMS_RECEIVED";
 
+    public static final String ACTION_PROCESS_JABBER_REGISTRATION_RESULT = "process jabber registration result";
+
+    public static final String EXTRA_PHONE_NR_ADDED_TO_DB = "phone nr added to db";
+
+    private ProgressDialog pDialog;
+
+    private BroadcastReceiver mServiceBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if(intent.getAction().equals(ACTION_PROCESS_JABBER_REGISTRATION_RESULT)) {
+                boolean registrationSuccessful = intent.getBooleanExtra(
+                        FMFCommunicationService.EXTRA_REGISTRATION_SUCCESSFUL,false);
+                if(registrationSuccessful) new AddNewNumber().execute();
+                else{
+                    pDialog.dismiss();
+                    Toast.makeText(RegistrationActivity.this,R.string.message_registration_failed,
+                            Toast.LENGTH_LONG).show();
+                }
+            }
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
@@ -59,9 +82,7 @@ public class RegistrationActivity extends Activity {
             setSimPhoneNumber();
         }
         else {
-//            Intent i = new Intent(this,ContactListActivity.class)
-//                    .setAction(ContactListActivity.ACTION_SHOW_CONTACTS);
-//            this.startActivity(i);
+            startActivity(new Intent(this,ContactListActivity.class));
             finish();
         }
     }
@@ -89,6 +110,8 @@ public class RegistrationActivity extends Activity {
     @Override
     protected void onStart() {
         super.onStart();
+        registerReceiver(mServiceBroadcastReceiver,
+                new IntentFilter(ACTION_PROCESS_JABBER_REGISTRATION_RESULT));
     }
 
     @Override
@@ -100,12 +123,12 @@ public class RegistrationActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
-
     }
 
     @Override
     protected void onStop() {
         super.onStop();
+        unregisterReceiver(mServiceBroadcastReceiver);
     }
 
     public void setSimPhoneNumber () {
@@ -174,20 +197,18 @@ public class RegistrationActivity extends Activity {
         String number= mobileNo.getText().toString();
 
         if (String.valueOf(codeNo.getText()).equals(String.valueOf(pin))) {
-
-            Intent i = new Intent(this,FMFCommunicationService.class)
+            startService(new Intent(this,FMFCommunicationService.class)
                     .setAction(FMFCommunicationService.ACTION_REGISTER)
-                    .putExtra(FMFCommunicationService.EXTRA_PHONE_NUMBER,number);
-            this.startService(i);
-            //TODO Martin: Add a BroadcastReceiver and move next line of code to this receiver.
-            //TODO the BroadcastReceiver will get an Intent from FMFCommunicationService
-            //TODO with the Information if the Jabber account creation succeeded or not
-            //TODO only in case it succeeded the number should be added to the database
-            new AddNewNumber().execute();
-
+                    .putExtra(FMFCommunicationService.EXTRA_PHONE_NUMBER,number));
+            pDialog = new ProgressDialog(RegistrationActivity.this);
+            pDialog.setMessage("Registrierung läuft... Bitte warten");
+            pDialog.setIndeterminate(false);
+            pDialog.setCancelable(true);
+            pDialog.show();
         }
         else {
-            Toast.makeText(getApplicationContext(), "Verifizierungscode stimmt nicht überein. Versuchen Sie es erneut.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Verifizierungscode stimmt nicht überein. Versuchen Sie es erneut.",
+                    Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -203,8 +224,6 @@ public class RegistrationActivity extends Activity {
 
     class AddNewNumber extends AsyncTask<String,String,Boolean> {
 
-        private ProgressDialog pDialog;
-
         JSONParser jsonParser = new JSONParser();
 
         // url to add number
@@ -219,11 +238,7 @@ public class RegistrationActivity extends Activity {
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
-            pDialog = new ProgressDialog(RegistrationActivity.this);
-            pDialog.setMessage("Registrierung läuft... Bitte warten");
-            pDialog.setIndeterminate(false);
-            pDialog.setCancelable(true);
-            pDialog.show();
+
         }
 
         protected Boolean doInBackground(String... args) {
@@ -261,15 +276,25 @@ public class RegistrationActivity extends Activity {
             // dismiss the dialog once done
             pDialog.dismiss();
 
-            if(success)
-                Toast.makeText(RegistrationActivity.this, "Ihre Anmeldung war erfolgreich", Toast.LENGTH_LONG).show();
+            if(success) {
+                Toast.makeText(RegistrationActivity.this,R.string.message_registration_succeeded,
+                        Toast.LENGTH_LONG).show();
 
-            Intent i = new Intent(RegistrationActivity.this,ContactListActivity.class)
-                    .setAction(ContactListActivity.ACTION_SHOW_CONTACTS);
-            startActivity(i);
+                startService(new Intent(RegistrationActivity.this,FMFCommunicationService.class)
+                        .setAction(FMFCommunicationService.ACTION_PROCESS_DB_REGISTRATION_RESULT)
+                        .putExtra(EXTRA_PHONE_NR_ADDED_TO_DB, true));
 
-            // closing this screen
-            finish();
+                startActivity(new Intent(RegistrationActivity.this, ContactListActivity.class));
+                // close this activity to preserve intended app navigation
+                finish();
+            } else {
+                Toast.makeText(RegistrationActivity.this,R.string.message_registration_failed,
+                        Toast.LENGTH_LONG).show();
+
+                startService(new Intent(RegistrationActivity.this,FMFCommunicationService.class)
+                        .setAction(FMFCommunicationService.ACTION_PROCESS_DB_REGISTRATION_RESULT)
+                        .putExtra(EXTRA_PHONE_NR_ADDED_TO_DB, false));
+            }
         }
 
     }

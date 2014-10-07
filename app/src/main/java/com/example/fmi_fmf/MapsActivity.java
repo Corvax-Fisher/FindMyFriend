@@ -192,6 +192,8 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
     @Override
     protected void onStop() {
         super.onStop();
+        startService(new Intent(this,FMFCommunicationService.class)
+                .setAction(FMFCommunicationService.ACTION_SEND_STOP));
         finish();
     }
 
