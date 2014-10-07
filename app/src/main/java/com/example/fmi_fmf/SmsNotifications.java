@@ -10,8 +10,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.widget.Toast;
 
-
-//TODO Farah: wouldn't it make sense to merge this class into SMSBroadcastReceiver or vice versa?
 /**
  * This class handles the SMS sent and sms delivery broadcast intents
  */

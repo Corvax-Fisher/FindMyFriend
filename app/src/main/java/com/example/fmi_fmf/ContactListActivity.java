@@ -5,39 +5,20 @@ import android.app.NotificationManager;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.content.SharedPreferences;
-import android.database.Cursor;
-import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.provider.ContactsContract;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.ListAdapter;
-import android.widget.ListView;
-import android.widget.SimpleAdapter;
 import android.view.View;
 import android.widget.AdapterView;
-import android.widget.Button;
 import android.widget.ListView;
-
-import org.apache.http.NameValuePair;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 
 
 public class ContactListActivity extends FragmentActivity
@@ -204,12 +185,6 @@ public class ContactListActivity extends FragmentActivity
         setContentView(R.layout.activity_contact_list);
         //this.startService(new Intent(this,FMFCommunicationService.class));
 
-        /* TODO (Farah):
-         * - Implement a custom ListAdapter with attributes like contactName, status(, etc.?)
-         * - Initialize the ListView and ListAdapter
-         * - Add the ListAdapter to the ListView
-         * - Implement an onItemClickListener and add it to the ListView
-         */
 
 //        Button testButton = (Button) findViewById(R.id.button);
 //        testButton.setOnClickListener(new View.OnClickListener() {

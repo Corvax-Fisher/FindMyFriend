@@ -10,7 +10,6 @@ import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.telephony.SmsManager;
-import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.Menu;
@@ -27,8 +26,6 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class RegistrationActivity extends Activity {
     private static final String LOG_TAG = RegistrationActivity.class.getSimpleName();
@@ -38,6 +35,8 @@ public class RegistrationActivity extends Activity {
 
     public static final String EXTRA_PHONE_NUMBER = "phone number";
     private static final String SMS_RECEIVED = "android.provider.Telephony.SMS_RECEIVED";
+
+    SMSBroadcastReceiver mIntentReceiver = new SMSBroadcastReceiver((TextView) findViewById(R.id.code_no));
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -95,11 +94,14 @@ public class RegistrationActivity extends Activity {
     protected void onResume() {
         super.onResume();
 
+        this.registerReceiver(mIntentReceiver, new IntentFilter(SMS_RECEIVED));
     }
 
     @Override
     protected void onPause() {
         super.onPause();
+
+        this.unregisterReceiver(mIntentReceiver);
 
     }
 
@@ -121,43 +123,11 @@ public class RegistrationActivity extends Activity {
         EditText mobileNo = (EditText) findViewById(R.id.mobile_no);
         String number = mobileNo.getText().toString();
 
-        SMSBroadcastReceiver mIntentReceiver = new SMSBroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if (intent.getAction().equals(SMS_RECEIVED)) {
-                    Bundle bundle = intent.getExtras();
-                    if (bundle != null) {
-                        Object[] pdus = (Object[])bundle.get("pdus");
-                        final SmsMessage[] messages = new SmsMessage[pdus.length];
-                        for (int i = 0; i < pdus.length; i++) {
-                            messages[i] = SmsMessage.createFromPdu((byte[])pdus[i]);
-                        }
-                        if (messages.length > -1) {
-                            String message = messages[0].getMessageBody();
-                            Pattern intsOnly = Pattern.compile("\\d+");
-                            Matcher makeMatch = intsOnly.matcher(message);
-                            makeMatch.find();
-                            String result = makeMatch.group();
-                            TextView text = (TextView) findViewById(R.id.code_no);
-                            text.setText(result);
-                            //TODO Farah: could you trigger the registration process here automatically
-                            //TODO so the user doesn't need to press the button to register?
-                            //TODO Additionally I would deactivate the editability.
-                        }
-                    }
-                }
-            }
-        };
-        //TODO Farah: unregister the receiver when no longer needed (e.g. in onStop() )
-        //TODO and maybe replace getBaseContext() with "this" in the next three lines of code
-        //TODO (I've read one shouldn't use getBaseContext() )
-        getBaseContext().registerReceiver(mIntentReceiver, new IntentFilter(SMS_RECEIVED));
-
         /** Creating a pending intent which will be broadcasted when an sms message is successfully sent */
-        PendingIntent piSent = PendingIntent.getBroadcast(getBaseContext(), 0, new Intent("sent_msg") , 0);
+        PendingIntent piSent = PendingIntent.getBroadcast(this, 0, new Intent("sent_msg") , 0);
 
         /** Creating a pending intent which will be broadcasted when an sms message is successfully delivered */
-        PendingIntent piDelivered = PendingIntent.getBroadcast(getBaseContext(), 0, new Intent("delivered_msg"), 0);
+        PendingIntent piDelivered = PendingIntent.getBroadcast(this, 0, new Intent("delivered_msg"), 0);
 
         /** Getting an instance of SmsManager to sent sms message from the application*/
         SmsManager smsManager = SmsManager.getDefault();
