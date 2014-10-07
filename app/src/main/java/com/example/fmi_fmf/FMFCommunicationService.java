@@ -2,7 +2,6 @@ package com.example.fmi_fmf;
 
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.app.ProgressDialog;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
@@ -25,9 +24,6 @@ import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.util.ArrayMap;
 import android.util.Log;
-import android.widget.ListAdapter;
-import android.widget.ListView;
-import android.widget.SimpleAdapter;
 import android.widget.Toast;
 
 import org.apache.http.NameValuePair;
@@ -35,7 +31,6 @@ import org.jivesoftware.smack.AccountManager;
 import org.jivesoftware.smack.Chat;
 import org.jivesoftware.smack.ChatManager;
 import org.jivesoftware.smack.ChatManagerListener;
-import org.jivesoftware.smack.ConnectionConfiguration;
 import org.jivesoftware.smack.MessageListener;
 import org.jivesoftware.smack.PacketListener;
 import org.jivesoftware.smack.RosterEntry;
@@ -70,7 +65,7 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     private final long REQUEST_TIMEOUT = 10000L; // 10 seconds
 
-    public static final String EXTRA_SEND_STOP = "send stop";
+    public static final String ACTION_SEND_STOP = "send stop";
 
     public static final String EXTRA_FRIEND_LOCATION = "friend location";
 
@@ -87,6 +82,10 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     public static final String ACTION_PROCESS_REQUEST_RESULT = "process request result";
     public static final String EXTRA_REQUEST_ACCEPTED = "request accepted";
+
+    public static final String EXTRA_REGISTRATION_SUCCESSFUL = "registration successful";
+
+    public static final String ACTION_PROCESS_DB_REGISTRATION_RESULT = "process db registration result";
 
     public enum RET_CODE {OK, NO_PROVIDER, NOT_CONNECTED};
 
@@ -108,6 +107,10 @@ public class FMFCommunicationService extends Service implements LocationListener
 //    private ArrayList<FMFListEntry> mContactListEntries;
 //    private Map<String,Integer> mRosterMap;
     private Set<Integer> mExistingNotifications;
+
+    private String mRegistrationUserName;
+    private String mRegistrationPassword;
+
 
     // Binder given to clients
     private final IBinder mBinder = new LocalBinder();
@@ -313,7 +316,10 @@ public class FMFCommunicationService extends Service implements LocationListener
         String username = sharedPref.getString(USERNAME, "");
         String password = sharedPref.getString(PASSWORD, "");
 
+        //TODO Martin: try to login here
+
         if (!username.isEmpty() && !password.isEmpty()) {
+        //TODO Martin: move this code sequence to a separate public method called login
             try {
                 mConnection.login(username, password);
 
@@ -376,44 +382,55 @@ public class FMFCommunicationService extends Service implements LocationListener
 
         if(intent != null){
             if(intent.getAction() != null) {
-                if (intent.getAction().equals(ACTION_REGISTER)) {
+                if(intent.getAction().equals(ACTION_REGISTER)) {
                     String phoneNr = intent.getStringExtra(EXTRA_PHONE_NUMBER);
                     Log.d("Phone Number", phoneNr);
 
-                    String genPass = generatePassword();
-                    String genUser = phoneNumberToJabberId(phoneNr);
+                    mRegistrationUserName = phoneNumberToJabberId(phoneNr);
+                    mRegistrationPassword = generatePassword();
 
-                    if(createJabberAccount(genUser,genPass)){
+                    boolean registrationSuccessful = createJabberAccount(mRegistrationUserName,mRegistrationPassword);
+                    if(registrationSuccessful){
                         Log.d(LOG_TAG,"Account creation successful");
-                        SharedPreferences sharedPref = getSharedPreferences("FMFNumbers", Context.MODE_PRIVATE);
-
-                        SharedPreferences.Editor user_pass_editor = sharedPref.edit();
-                        user_pass_editor.putString(USERNAME, genUser);
-                        user_pass_editor.putString(PASSWORD, genPass);
-                        user_pass_editor.commit();
                     } else
                         Log.d(LOG_TAG,"Account creation failed!");
-                } else if (intent.getAction().equals(ACTION_CANCEL_NOTIFICATION)) {
+                    LocalBroadcastManager.getInstance(this).sendBroadcast(
+                            new Intent(RegistrationActivity.ACTION_PROCESS_JABBER_REGISTRATION_RESULT)
+                            .putExtra(EXTRA_REGISTRATION_SUCCESSFUL,registrationSuccessful));
+                } else if(intent.getAction().equals(ACTION_CANCEL_NOTIFICATION)) {
                     int notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, 0);
                     if (notificationId != 0) {
 //                        mNotificationManager.cancel(notificationId);
                         mExistingNotifications.remove(notificationId);
                     }
-                } else if (intent.getAction().equals(ACTION_PROCESS_REQUEST_RESULT)) {
+                } else if(intent.getAction().equals(ACTION_PROCESS_REQUEST_RESULT)) {
                     if (intent.getBooleanExtra(EXTRA_REQUEST_ACCEPTED, false))
                         sendAccept(intent.getStringExtra(EXTRA_JABBER_ID));
                     else sendDecline(intent.getStringExtra(EXTRA_JABBER_ID));
-                }
-            }
-            if(intent.hasExtra(EXTRA_SEND_STOP))
-            {
-                Toast.makeText(getApplicationContext(),"sending stop to "+intent.getStringExtra("send stop to"),Toast.LENGTH_SHORT).show();
-                try {
-                    if(mReceiverChat != null) mReceiverChat.sendMessage("S");
-                } catch (XMPPException e) {
-                    e.printStackTrace();
-                } catch (SmackException.NotConnectedException e) {
-                    e.printStackTrace();
+                } else if(intent.getAction().equals(ACTION_PROCESS_DB_REGISTRATION_RESULT)) {
+                    boolean phoneNrAdded = intent.getBooleanExtra(RegistrationActivity.EXTRA_PHONE_NR_ADDED_TO_DB,false);
+                    if(phoneNrAdded) {
+                        SharedPreferences sharedPref = getSharedPreferences("FMFNumbers", Context.MODE_PRIVATE);
+
+                        SharedPreferences.Editor user_pass_editor = sharedPref.edit();
+                        user_pass_editor.putString(USERNAME, mRegistrationUserName);
+                        user_pass_editor.putString(PASSWORD, mRegistrationPassword);
+                        user_pass_editor.commit();
+
+                        //TODO Martin: login here
+
+                        mRegistrationUserName = null;
+                        mRegistrationPassword = null;
+                    } else stopSelf();
+                } else if(intent.getAction().equals(ACTION_SEND_STOP)) {
+                    Toast.makeText(getApplicationContext(),"sending stop to "+intent.getStringExtra("send stop to"),Toast.LENGTH_SHORT).show();
+                    try {
+                        if(mReceiverChat != null) mReceiverChat.sendMessage("S");
+                    } catch (XMPPException e) {
+                        e.printStackTrace();
+                    } catch (SmackException.NotConnectedException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         }
@@ -585,7 +602,6 @@ public class FMFCommunicationService extends Service implements LocationListener
             if(fullName == null) fullName = jabberIdToPhoneNumber(chat.getParticipant());
             if(message.getBody().equals("P")) {
                 //Position request
-                //TODO: resolve the real name from the jabberID
                 notifyAboutRequest(chat.getParticipant(), fullName);
                 mLocationManager.requestLocationUpdates(mProvider,0,5,FMFCommunicationService.this);
             } else if(message.getBody().equals("N")) {
@@ -627,7 +643,7 @@ public class FMFCommunicationService extends Service implements LocationListener
                 e.printStackTrace();
             }
 
-            fillInJabberIdAndStatus();
+//            fillInJabberIdAndStatus();
 
             mConnection.getRoster().addRosterListener(new FMFRosterListener(mContactsAdapter));
 

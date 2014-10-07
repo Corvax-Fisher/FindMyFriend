@@ -28,7 +28,8 @@ public class FMFRosterListener implements RosterListener {
 
     @Override
     public void entriesAdded(Collection<String> strings) {
-        //Nothing to do
+        //TODO Martin do a database lookup to find out if this is a FMF user
+        //TODO if yes, add to contact list, otherwise unsubscribe that user
     }
 
     @Override
@@ -43,7 +44,6 @@ public class FMFRosterListener implements RosterListener {
 
     @Override
     public void presenceChanged(Presence presence) {
-        //TODO (Martin): update the Presence in the ListView
         boolean status;
 
         if(presence.getMode() == Presence.Mode.available) status = FMFListEntry.ONLINE;
