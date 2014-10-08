@@ -210,10 +210,7 @@ public class ContactListActivity extends FragmentActivity
                 //inviteContact();
                 return true;
             case R.id.action_refresh:
-
-//                FMFCommunicationService.LoadAllContacts loadAllContacts = new;
-//                loadAllContacts.execute();
-
+                mService.loadContacts();
                 //refreshContactList();
                 return true;
             default:
