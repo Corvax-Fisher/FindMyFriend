@@ -1,7 +1,8 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
-    android:id="@+id/registration_scroll">
+    android:id="@+id/registration_scroll"
+    android:background="#eeeeee">
 
     <RelativeLayout
         xmlns:tools="http://schemas.android.com/tools"
@@ -9,7 +10,7 @@
         android:id="@+id/registration_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:padding="10sp"
+        android:padding="10dp"
         tools:context="com.example.fmi_fmf.RegistrationActivity">
 
         <ImageView
@@ -24,8 +25,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textAppearance="?android:attr/textAppearanceLarge"
-            android:text="Follow My Friend"
-            android:id="@+id/title_fmf"
+            android:text="Registrierung"
+            android:id="@+id/registration_text"
             android:textSize="30sp"
             android:layout_below="@+id/logo_fmf"
             android:layout_centerHorizontal="true" />
@@ -35,8 +36,8 @@
             android:layout_height="wrap_content"
             android:text="@string/textTypeNumber"
             android:id="@+id/typeNumber"
-            android:layout_marginTop="10dp"
-            android:layout_below="@+id/title_fmf"
+            android:layout_marginTop="15dp"
+            android:layout_below="@+id/registration_text"
             android:layout_centerHorizontal="true" />
 
         <EditText android:id="@+id/mobile_no"
@@ -47,7 +48,8 @@
             android:inputType="number"
             android:layout_below="@+id/typeNumber"
             android:layout_centerHorizontal="true"
-            android:background="#eeeeee"
+            android:background="#fff"
+            android:padding="3dp"
             android:layout_marginTop="3dp"/>
 
         <Button
@@ -58,7 +60,8 @@
             android:id="@+id/weiter_button"
             android:layout_below="@+id/mobile_no"
             android:layout_centerHorizontal="true"
-            android:background="#eeeeee"
+            android:background="#fff"
+            android:padding="3dp"
             android:layout_marginTop="3dp"/>
 
         <TextView
@@ -68,8 +71,7 @@
             android:id="@+id/errorText"
             android:layout_marginTop="10dp"
             android:layout_below="@+id/registration_button"
-            android:layout_centerHorizontal="true"
-            android:textColor="#d4d4d4"/>
+            android:layout_centerHorizontal="true"/>
 
         <TextView
             android:layout_width="fill_parent"
@@ -88,7 +90,8 @@
             android:id="@+id/code_no"
             android:layout_below="@+id/typeCode"
             android:layout_centerHorizontal="true"
-            android:background="#eeeeee"
+            android:background="#fff"
+            android:padding="3dp"
             android:layout_marginTop="3dp"
             android:visibility="gone"/>
 
@@ -100,7 +103,8 @@
             android:onClick="compareCode"
             android:layout_below="@+id/code_no"
             android:layout_centerHorizontal="true"
-            android:background="#eeeeee"
+            android:background="#fff"
+            android:padding="3dp"
             android:layout_marginTop="3dp"
             android:visibility="gone"/>
 

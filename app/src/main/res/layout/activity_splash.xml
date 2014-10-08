@@ -2,7 +2,7 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#eeeeee">
+    android:background="#d4d4d4">
 
     <ImageView
         android:id="@+id/imgLogo"
@@ -16,7 +16,7 @@
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
         android:text="Follow My Friend"
-        android:id="@+id/title_fmf"
+        android:id="@+id/registration_text"
         android:textSize="30sp"
         android:layout_below="@+id/imgLogo"
         android:layout_centerHorizontal="true" />
