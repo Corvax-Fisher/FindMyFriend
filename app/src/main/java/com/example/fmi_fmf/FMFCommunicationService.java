@@ -96,6 +96,8 @@ public class FMFCommunicationService extends Service implements LocationListener
     private final Integer LOGGED_IN = 5;
     private final Integer NOT_LOGGED_IN = 6;
     private AsyncTask<Integer, Void, Integer> mConnectionTask;
+    private AsyncTask<String, String, Collection<String>> mLoadContactsTask;
+    private boolean mLoadContactsTaskIsRunning = false;
 
     public enum RET_CODE {OK, NO_PROVIDER, NOT_CONNECTED};
 
@@ -283,6 +285,12 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     public boolean notificationExists(int notificationId){
         return mExistingNotifications.contains(notificationId);
+    }
+
+    public void loadContacts() {
+        if(mConnection.isAuthenticated() && !mLoadContactsTaskIsRunning) {
+            mLoadContactsTask = new LoadAllContacts().execute();
+        }
     }
 
     @Override
@@ -576,10 +584,11 @@ public class FMFCommunicationService extends Service implements LocationListener
         public void processMessage(Chat chat, Message message) {
             String fullName = mContactsAdapter.resolveJabberIdToRealName(chat.getParticipant());
             if(fullName == null) fullName = jabberIdToPhoneNumber(chat.getParticipant());
+            LocationManager lm = (LocationManager) getSystemService(LOCATION_SERVICE);
             if(message.getBody().equals("P")) {
                 //Position request
                 notifyAboutRequest(chat.getParticipant(), fullName);
-                mLocationManager.requestLocationUpdates(mProvider,0,5,FMFCommunicationService.this);
+                lm.requestLocationUpdates(mProvider,0,5,FMFCommunicationService.this);
             } else if(message.getBody().equals("N")) {
                 //Position request rejected
                 notifyAboutDecline(fullName);
@@ -587,7 +596,7 @@ public class FMFCommunicationService extends Service implements LocationListener
                 //Stop sending location updates to sender by removing him from the ArrayList
                 mAcceptedJabberIds.remove(chat.getParticipant());
                 if(mAcceptedJabberIds.isEmpty())
-                    mLocationManager.removeUpdates(FMFCommunicationService.this);
+                    lm.removeUpdates(FMFCommunicationService.this);
             } else if(message.getBody().equals("A")) {
                 mRequestTimerTask.cancel();
                 notifyAboutAccept(fullName);
@@ -852,15 +861,11 @@ public class FMFCommunicationService extends Service implements LocationListener
         /**
          * Before starting background thread Show Progress Dialog
          * */
-//        @Override
-//        protected void onPreExecute() {
-//            super.onPreExecute();
-//            pDialog = new ProgressDialog(ContactListActivity.this);
-//            pDialog.setMessage("Kontakte werden geladen. Bitte warten...");
-//            pDialog.setIndeterminate(false);
-//            pDialog.setCancelable(false);
-//            pDialog.show();
-//        }
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            mLoadContactsTaskIsRunning = true;
+        }
 
         /**
          * getting All products from url
@@ -933,6 +938,7 @@ public class FMFCommunicationService extends Service implements LocationListener
          * After completing background task Dismiss the progress dialog
          * **/
         protected void onPostExecute(Collection<String> contactData) {
+            mLoadContactsTaskIsRunning = false;
             for(String contact: contactData)
             {
                 String contactDataSplit[] = contact.split(":::");
@@ -1086,12 +1092,14 @@ public class FMFCommunicationService extends Service implements LocationListener
                     }
                 }, filter);
             } else if(result.equals(LOGGED_IN)) {
-                if(mConnection.isAuthenticated()) {
-                    //Logged in, now load contacts
-
-                    //Loading contacts in Background Thread
-                    new LoadAllContacts().execute();
+                Presence p = new Presence(Presence.Type.available);
+                p.setMode(Presence.Mode.available);
+                try {
+                    mConnection.sendPacket(p);
+                } catch (SmackException.NotConnectedException e) {
+                    e.printStackTrace();
                 }
+                loadContacts();
             }
         }
     }
