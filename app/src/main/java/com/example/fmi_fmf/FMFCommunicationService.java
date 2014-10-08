@@ -99,7 +99,7 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     public enum RET_CODE {OK, NO_PROVIDER, NOT_CONNECTED};
 
-    private final String XMPP_SERVER = "boese-ban.de";
+    private final String XMPP_SERVER = "einfachjabber.de";
 
     private LocationManager mLocationManager;
     private XMPPConnection mConnection = new XMPPTCPConnection(XMPP_SERVER);
@@ -346,7 +346,7 @@ public class FMFCommunicationService extends Service implements LocationListener
                     String phoneNr = intent.getStringExtra(EXTRA_PHONE_NUMBER);
                     Log.d("Phone Number", phoneNr);
 
-                    mUserName = "FMF" + phoneNr;
+                    mUserName = "FMF_" + phoneNr;
                     mPassword = generatePassword();
                     Log.d(LOG_TAG,"Generated Password: "+ mPassword);
 
@@ -554,7 +554,7 @@ public class FMFCommunicationService extends Service implements LocationListener
     }
 
     private String phoneNumberToJabberId(String phoneNumber) {
-        return "FMF" + phoneNumber + "@" + XMPP_SERVER;
+        return "FMF_" + phoneNumber + "@" + XMPP_SERVER;
     }
 
     private String jabberIdToPhoneNumber(String jabberId){
@@ -562,7 +562,7 @@ public class FMFCommunicationService extends Service implements LocationListener
         String phoneNumber = null;
         if(jabberIdSplit.length == 2)
         {
-            phoneNumber = jabberIdSplit[0].substring(3);
+            phoneNumber = jabberIdSplit[0].substring(4);
         }
         return phoneNumber;
     }
@@ -1047,7 +1047,7 @@ public class FMFCommunicationService extends Service implements LocationListener
                     public void processPacket(Packet packet) {
                         Message message = (Message) packet;
                         if (message.getBody() != null) {
-                            if(message.getBody().equals("P")) {
+                            if (message.getBody().equals("P")) {
                                 //Position request
                             }
                             String fromName = StringUtils.parseBareAddress(message

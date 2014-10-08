@@ -30,6 +30,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RegistrationActivity extends Activity {
+    SMSBroadcastReceiver mIntentReceiver;
+
     private static final String LOG_TAG = RegistrationActivity.class.getSimpleName();
     public static final boolean D = true;
 
@@ -60,10 +62,9 @@ public class RegistrationActivity extends Activity {
         }
     };
 
-    SMSBroadcastReceiver mIntentReceiver = new SMSBroadcastReceiver((TextView) findViewById(R.id.code_no));
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        FontsOverride.setDefaultFont(this, "MONOSPACE", "Roboto-Regular.ttf");
 
         super.onCreate(savedInstanceState);
         //sharedpreferences zum testen löschen, damit registration activity aktiv wird
@@ -79,6 +80,7 @@ public class RegistrationActivity extends Activity {
 
         if(userName.isEmpty()){
             setContentView(R.layout.activity_registration);
+            mIntentReceiver = new SMSBroadcastReceiver((TextView) findViewById(R.id.code_no));
             setSimPhoneNumber();
         }
         else {
