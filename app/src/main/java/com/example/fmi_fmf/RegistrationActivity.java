@@ -19,6 +19,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -148,19 +149,14 @@ public class RegistrationActivity extends Activity {
         TextView typeCode = (TextView) findViewById(R.id.typeCode);
         TextView errorText = (TextView) findViewById(R.id.errorText);
         Button buttonReg = (Button) findViewById(R.id.registration_button);
+        ScrollView scrollView = (ScrollView) findViewById(R.id.registration_scroll);
 
         if(mobileNo.getText().length() >= 10){
             errorText.setVisibility(View.GONE);
             codeNo.setVisibility(View.VISIBLE);
             typeCode.setVisibility(View.VISIBLE);
             buttonReg.setVisibility(View.VISIBLE);
-            findViewById(R.id.registration_view).scrollTo(buttonReg.getLeft(),buttonReg.getTop());
-            String s=String.valueOf(buttonReg.getLeft());
-            String t=String.valueOf(buttonReg.getTop());
-            Log.d("left",s);
-            Log.d("top",t);
-
-
+            scrollView.fullScroll(ScrollView.FOCUS_DOWN);
 
             String message = "Dein Verifizierungscode ist: "+ pin;
             String number = mobileNo.getText().toString();
@@ -178,7 +174,7 @@ public class RegistrationActivity extends Activity {
             smsManager.sendTextMessage(number, null, message, piSent, piDelivered);
         }
         else {
-            errorText.setText("Bitte überprüfe deine Handynummer und versuche es erneut");
+            errorText.setText("Bitte überprüfe deine Handynummer und versuche es erneut.");
             errorText.setVisibility(View.VISIBLE);
             codeNo.setVisibility(View.GONE);
             typeCode.setVisibility(View.GONE);

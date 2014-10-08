@@ -1,6 +1,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
-    android:layout_height="fill_parent">
+    android:layout_height="fill_parent"
+    android:id="@+id/registration_scroll">
 
     <RelativeLayout
         xmlns:tools="http://schemas.android.com/tools"
@@ -67,7 +68,8 @@
             android:id="@+id/errorText"
             android:layout_marginTop="10dp"
             android:layout_below="@+id/registration_button"
-            android:layout_centerHorizontal="true" />
+            android:layout_centerHorizontal="true"
+            android:textColor="#d4d4d4"/>
 
         <TextView
             android:layout_width="fill_parent"
