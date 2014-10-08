@@ -291,6 +291,9 @@ public class FMFCommunicationService extends Service implements LocationListener
 
         if(ContactListActivity.D) Log.d(LOG_TAG,"Service gestartet");
 
+        mContactsAdapter = new ContactListAdapter(
+                FMFCommunicationService.this,R.layout.contact_list_item,R.id.nameView);
+
         initConnection();
 
         SharedPreferences sharedPref = getSharedPreferences("FMFNumbers", Context.MODE_PRIVATE);
@@ -593,12 +596,20 @@ public class FMFCommunicationService extends Service implements LocationListener
                 String strLatLng[] = message.getBody().split(":");
                 if(strLatLng.length == 2) // Lat Lon coordinates received
                 {
-                    double dLatLng[] = {    Double.parseDouble(strLatLng[0]),
-                                            Double.parseDouble(strLatLng[1])
-                    };
-                    Intent i = new Intent(MapsActivity.UPDATE_FRIEND_LOCATION)
-                            .putExtra(EXTRA_FRIEND_LOCATION,dLatLng);
-                    LocalBroadcastManager.getInstance(FMFCommunicationService.this).sendBroadcast(i);
+                    double dLatLng[] = new double[2];
+                    boolean isPosition;
+                    try {
+                        dLatLng[0] = Double.parseDouble(strLatLng[0]);
+                        dLatLng[1] = Double.parseDouble(strLatLng[1]);
+                        isPosition = true;
+                    } catch (NumberFormatException e) {
+                        isPosition = false;
+                    }
+                    if(isPosition) {
+                        Intent i = new Intent(MapsActivity.UPDATE_FRIEND_LOCATION)
+                                .putExtra(EXTRA_FRIEND_LOCATION,dLatLng);
+                        LocalBroadcastManager.getInstance(FMFCommunicationService.this).sendBroadcast(i);
+                    }
                 }
             }
         }
@@ -825,7 +836,7 @@ public class FMFCommunicationService extends Service implements LocationListener
     /**
      * Background Async Task to Load all product by making HTTP Request
      * */
-    class LoadAllContacts extends AsyncTask<String, String, String> {
+    class LoadAllContacts extends AsyncTask<String, String, Collection<String> > {
 
         // url to get all products list
         private String url_all_numbers = "http://farahzeb.de/fmi/get_all_numbers.php";
@@ -854,7 +865,9 @@ public class FMFCommunicationService extends Service implements LocationListener
         /**
          * getting All products from url
          * */
-        protected String doInBackground(String... args) {
+        protected Collection<String> doInBackground(String... args) {
+
+            ArrayList<String> ret = new ArrayList<String>();
             // Building Parameters
             List<NameValuePair> params = new ArrayList<NameValuePair>();
             // getting JSON string from URL
@@ -887,7 +900,8 @@ public class FMFCommunicationService extends Service implements LocationListener
                         // own number shouldnt be in the contact list activity
 
                         if (!number.equals(myNumber)) {
-                            String contactname = getContactName(getApplicationContext(), number);
+                            //TODO add contact names to ArrayList ret
+                            String contactname = getContactName(FMFCommunicationService.this, number);
 
                             // creating new HashMap
                             HashMap<String, String> map = new HashMap<String, String>();
@@ -899,24 +913,7 @@ public class FMFCommunicationService extends Service implements LocationListener
                             // adding HashList to ArrayList
                             if(contactname != null){
                                 String jabberId = phoneNumberToJabberId(number);
-                                mContactsAdapter.add(new FMFListEntry(jabberId,contactname));
-                                RosterEntry roster = mConnection.getRoster().getEntry(jabberId);
-                                if(roster == null){
-                                    try {
-                                        mConnection.getRoster().createEntry(jabberId,contactname,null);
-                                    } catch (SmackException.NotLoggedInException e) {
-                                        e.printStackTrace();
-                                    } catch (SmackException.NoResponseException e) {
-                                        e.printStackTrace();
-                                    } catch (XMPPException.XMPPErrorException e) {
-                                        e.printStackTrace();
-                                    } catch (SmackException.NotConnectedException e) {
-                                        e.printStackTrace();
-                                    }
-                                }
-                                Presence p = mConnection.getRoster().getPresence(jabberId);
-                                if(p.getMode() == Presence.Mode.available)
-                                    mContactsAdapter.setStatusByJabberId(jabberId,true);
+                                ret.add(jabberId + ":::" + contactname);
                             }
                         }
 
@@ -929,13 +926,36 @@ public class FMFCommunicationService extends Service implements LocationListener
                 e.printStackTrace();
             }
 
-            return null;
+            return ret;
         }
 
         /**
          * After completing background task Dismiss the progress dialog
          * **/
-        protected void onPostExecute(String file_url) {
+        protected void onPostExecute(Collection<String> contactData) {
+            for(String contact: contactData)
+            {
+                String contactDataSplit[] = contact.split(":::");
+                mContactsAdapter.add(new FMFListEntry(contactDataSplit[0],contactDataSplit[1]));
+                RosterEntry roster = mConnection.getRoster().getEntry(contactDataSplit[0]);
+                if(roster == null){
+                    try {
+                        mConnection.getRoster().createEntry(contactDataSplit[0],contactDataSplit[1],null);
+                    } catch (SmackException.NotLoggedInException e) {
+                        e.printStackTrace();
+                    } catch (SmackException.NoResponseException e) {
+                        e.printStackTrace();
+                    } catch (XMPPException.XMPPErrorException e) {
+                        e.printStackTrace();
+                    } catch (SmackException.NotConnectedException e) {
+                        e.printStackTrace();
+                    }
+                }
+                Presence p = mConnection.getRoster().getPresence(contactDataSplit[0]);
+                if(p.getMode() == Presence.Mode.available)
+                    mContactsAdapter.setStatusByJabberId(contactDataSplit[0],true);
+            }
+
             // dismiss the dialog after getting all products
 //            pDialog.dismiss();
             // updating UI from Background Thread
@@ -1068,8 +1088,7 @@ public class FMFCommunicationService extends Service implements LocationListener
             } else if(result.equals(LOGGED_IN)) {
                 if(mConnection.isAuthenticated()) {
                     //Logged in, now load contacts
-                    mContactsAdapter = new ContactListAdapter(
-                            FMFCommunicationService.this,R.layout.contact_list_item,R.id.nameView);
+
                     //Loading contacts in Background Thread
                     new LoadAllContacts().execute();
                 }
