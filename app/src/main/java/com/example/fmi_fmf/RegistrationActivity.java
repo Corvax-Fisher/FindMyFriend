@@ -17,6 +17,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -30,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RegistrationActivity extends Activity {
+
     SMSBroadcastReceiver mIntentReceiver;
 
     private static final String LOG_TAG = RegistrationActivity.class.getSimpleName();
@@ -64,7 +66,6 @@ public class RegistrationActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        FontsOverride.setDefaultFont(this, "MONOSPACE", "Roboto-Regular.ttf");
 
         super.onCreate(savedInstanceState);
         //sharedpreferences zum testen löschen, damit registration activity aktiv wird
@@ -142,22 +143,47 @@ public class RegistrationActivity extends Activity {
     }
 
     public void verifyNumber (View view){
-
-        String message = "Dein Verifizierungscode ist: "+ pin;
         EditText mobileNo = (EditText) findViewById(R.id.mobile_no);
-        String number = mobileNo.getText().toString();
+        EditText codeNo = (EditText) findViewById(R.id.code_no);
+        TextView typeCode = (TextView) findViewById(R.id.typeCode);
+        TextView errorText = (TextView) findViewById(R.id.errorText);
+        Button buttonReg = (Button) findViewById(R.id.registration_button);
 
-        /** Creating a pending intent which will be broadcasted when an sms message is successfully sent */
-        PendingIntent piSent = PendingIntent.getBroadcast(this, 0, new Intent("sent_msg") , 0);
+        if(mobileNo.getText().length() >= 10){
+            errorText.setVisibility(View.GONE);
+            codeNo.setVisibility(View.VISIBLE);
+            typeCode.setVisibility(View.VISIBLE);
+            buttonReg.setVisibility(View.VISIBLE);
+            findViewById(R.id.registration_view).scrollTo(buttonReg.getLeft(),buttonReg.getTop());
+            String s=String.valueOf(buttonReg.getLeft());
+            String t=String.valueOf(buttonReg.getTop());
+            Log.d("left",s);
+            Log.d("top",t);
 
-        /** Creating a pending intent which will be broadcasted when an sms message is successfully delivered */
-        PendingIntent piDelivered = PendingIntent.getBroadcast(this, 0, new Intent("delivered_msg"), 0);
 
-        /** Getting an instance of SmsManager to sent sms message from the application*/
-        SmsManager smsManager = SmsManager.getDefault();
 
-        /** Sending the Sms message to the intended party */
-        smsManager.sendTextMessage(number, null, message, piSent, piDelivered);
+            String message = "Dein Verifizierungscode ist: "+ pin;
+            String number = mobileNo.getText().toString();
+
+            /** Creating a pending intent which will be broadcasted when an sms message is successfully sent */
+            PendingIntent piSent = PendingIntent.getBroadcast(this, 0, new Intent("sent_msg") , 0);
+
+            /** Creating a pending intent which will be broadcasted when an sms message is successfully delivered */
+            PendingIntent piDelivered = PendingIntent.getBroadcast(this, 0, new Intent("delivered_msg"), 0);
+
+            /** Getting an instance of SmsManager to sent sms message from the application*/
+            SmsManager smsManager = SmsManager.getDefault();
+
+            /** Sending the Sms message to the intended party */
+            smsManager.sendTextMessage(number, null, message, piSent, piDelivered);
+        }
+        else {
+            errorText.setText("Bitte überprüfe deine Handynummer und versuche es erneut");
+            errorText.setVisibility(View.VISIBLE);
+            codeNo.setVisibility(View.GONE);
+            typeCode.setVisibility(View.GONE);
+            buttonReg.setVisibility(View.GONE);
+        }
 
     }
 
