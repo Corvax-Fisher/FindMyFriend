@@ -27,7 +27,7 @@
             android:textAppearance="?android:attr/textAppearanceLarge"
             android:text="Registrierung"
             android:id="@+id/registration_text"
-            android:textSize="30sp"
+            android:textSize="25sp"
             android:layout_below="@+id/logo_fmf"
             android:layout_centerHorizontal="true" />
 

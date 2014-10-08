@@ -20,6 +20,7 @@
         android:layout_weight="0.6"
         android:textSize="20sp"
         android:layout_gravity="left"
+        android:textColor="#000"
         android:layout_marginLeft="10dp" />
 
     <ImageView

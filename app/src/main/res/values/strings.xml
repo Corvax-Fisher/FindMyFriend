@@ -4,9 +4,11 @@
     <string name="app_name">Follow My Friend</string>
     <string name="hello_login">Handynummer</string>
     <string name="action_settings">Settings</string>
-    <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="title_activity_map">MapActivity</string>
     <string name="title_activity_maps">Map</string>
+
+    <string name="action_refresh">Aktualisieren</string>
+    <string name="action_new">Einladen</string>
 
     <string name="accept">Ja</string>
     <string name="decline">Nein</string>
