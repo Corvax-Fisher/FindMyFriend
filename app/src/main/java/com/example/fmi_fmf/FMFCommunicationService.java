@@ -201,8 +201,7 @@ public class FMFCommunicationService extends Service implements LocationListener
     public RET_CODE sendRequest(String myFriendsJabberId) {
         if(mProvider == null) return RET_CODE.NO_PROVIDER;
         if(!mConnection.isAuthenticated()) return RET_CODE.NOT_CONNECTED;
-        if(ContactListActivity.D)
-            Toast.makeText(this,"sending a request to " + myFriendsJabberId,Toast.LENGTH_SHORT).show();
+        if(ContactListActivity.D) Log.d(LOG_TAG,"sending a request to " + myFriendsJabberId);
         mReceiverChat = mChatManager.createChat(myFriendsJabberId,mChatMessageListener);
         try {
             mReceiverChat.sendMessage("P");
@@ -948,11 +947,11 @@ public class FMFCommunicationService extends Service implements LocationListener
                         e.printStackTrace();
                     }
                 }
-                Presence p = mConnection.getRoster().getPresence(contactDataSplit[0]);
-                if(p.getStatus() != null) {
-                    if(p.getStatus().equals("Available"))
-                        listEntry.status = FMFListEntry.ONLINE;
-                }
+//                Presence p = mConnection.getRoster().getPresence(contactDataSplit[0]);
+//                if(p.getStatus() != null) {
+//                    if(p.getStatus().equals("Available"))
+//                        listEntry.status = FMFListEntry.ONLINE;
+//                }
 //                    mContactsAdapter.setStatusByJabberId(contactDataSplit[0],true);
                 listEntries.add(listEntry);
             }
@@ -985,30 +984,30 @@ public class FMFCommunicationService extends Service implements LocationListener
                 }
             });
             // Add a packet listener to get messages sent to us
-            PacketFilter filter = new MessageTypeFilter(Message.Type.chat);
-            mConnection.addPacketListener(new PacketListener() {
-                @Override
-                public void processPacket(Packet packet) {
-                    Message message = (Message) packet;
-                    if (message.getBody() != null) {
-                        if (message.getBody().equals("P")) {
-                            //Position request
-                        }
-                        String fromName = StringUtils.parseBareAddress(message
-                                .getFrom());
-                        Log.i(LOG_TAG, "Text Received " + message.getBody()
-                                + " from " + fromName);
-//						messages.add(fromName + ":");
-//						messages.add(message.getBody());
-//						// Add the incoming message to the list view
-//						mHandler.post(new Runnable() {
-//							public void run() {
-//								setListAdapter();
-//							}
-//						});
-                    }
-                }
-            }, filter);
+//            PacketFilter filter = new MessageTypeFilter(Message.Type.chat);
+//            mConnection.addPacketListener(new PacketListener() {
+//                @Override
+//                public void processPacket(Packet packet) {
+//                    Message message = (Message) packet;
+//                    if (message.getBody() != null) {
+//                        if (message.getBody().equals("P")) {
+//                            //Position request
+//                        }
+//                        String fromName = StringUtils.parseBareAddress(message
+//                                .getFrom());
+//                        Log.i(LOG_TAG, "Text Received " + message.getBody()
+//                                + " from " + fromName);
+////						messages.add(fromName + ":");
+////						messages.add(message.getBody());
+////						// Add the incoming message to the list view
+////						mHandler.post(new Runnable() {
+////							public void run() {
+////								setListAdapter();
+////							}
+////						});
+//                    }
+//                }
+//            }, filter);
 
             // dismiss the dialog after getting all products
 //            pDialog.dismiss();
@@ -1126,6 +1125,7 @@ public class FMFCommunicationService extends Service implements LocationListener
 
         if(presence.getStatus() != null)
         {
+            if(ContactListActivity.D) Log.d(LOG_TAG,"received presence update: "+ presence.getStatus());
             if(presence.getStatus().equals("Available"))
                 mContactsAdapter.setStatusByJabberId(fromJabberId,FMFListEntry.ONLINE);
             else if(presence.getStatus().equals("Not available"))

@@ -109,7 +109,6 @@ public class ContactListAdapter extends ArrayAdapter<FMFListEntry> {
     }
 
     public void setStatusByJabberId(String jabberId, boolean status) {
-        //TODO bugfix: jabberId includes resource, RosterMap doesn't
         if(mRosterMap.get(jabberId) != null)
         {
             if(this.getItem(mRosterMap.get(jabberId)).status != status)
