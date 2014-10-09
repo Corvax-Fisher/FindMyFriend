@@ -964,8 +964,10 @@ public class FMFCommunicationService extends Service implements LocationListener
                     }
                 }
                 Presence p = mConnection.getRoster().getPresence(contactDataSplit[0]);
-                if(p.getStatus().equals("Available"))
-                    listEntry.status = FMFListEntry.ONLINE;
+                if(p.getStatus() != null) {
+                    if(p.getStatus().equals("Available"))
+                        listEntry.status = FMFListEntry.ONLINE;
+                }
 //                    mContactsAdapter.setStatusByJabberId(contactDataSplit[0],true);
                 listEntries.add(listEntry);
             }
@@ -1135,9 +1137,12 @@ public class FMFCommunicationService extends Service implements LocationListener
     public void presenceChanged(Presence presence) {
         String fromJabberId = presence.getFrom().split("/")[0];
 
-        if(presence.getStatus().equals("Available"))
-            mContactsAdapter.setStatusByJabberId(fromJabberId,FMFListEntry.ONLINE);
-        else if(presence.getStatus().equals("Not available"))
-            mContactsAdapter.setStatusByJabberId(fromJabberId,FMFListEntry.OFFLINE);
+        if(presence.getStatus() != null)
+        {
+            if(presence.getStatus().equals("Available"))
+                mContactsAdapter.setStatusByJabberId(fromJabberId,FMFListEntry.ONLINE);
+            else if(presence.getStatus().equals("Not available"))
+                mContactsAdapter.setStatusByJabberId(fromJabberId,FMFListEntry.OFFLINE);
+        }
     }
 }
