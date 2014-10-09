@@ -972,6 +972,59 @@ public class FMFCommunicationService extends Service implements LocationListener
                 listEntries.add(listEntry);
             }
             mContactsAdapter.addAll(listEntries);
+
+            mConnection.getRoster().addRosterListener(FMFCommunicationService.this);
+
+            mChatManager = ChatManager.getInstanceFor(mConnection);
+            if(mChatManager != null) mChatManager.addChatListener( new ChatManagerListener() {
+                @Override
+                public void chatCreated(Chat chat, boolean createdLocally) {
+                    if(!createdLocally)
+                    {
+                        chat.addMessageListener(mChatMessageListener);
+
+                        boolean chatAlreadyExists = false;
+                        if(mSenderChats == null)
+                        {
+                            mSenderChats = new ArrayList<Chat>();
+                        } else {
+                            for(Chat aChat : mSenderChats)
+                            {
+                                if( aChat.getParticipant().equals(chat.getParticipant()) )
+                                    chatAlreadyExists = true;
+                            }
+                        }
+                        if(!chatAlreadyExists)
+                            mSenderChats.add(chat);
+                    }
+                }
+            });
+            // Add a packet listener to get messages sent to us
+            PacketFilter filter = new MessageTypeFilter(Message.Type.chat);
+            mConnection.addPacketListener(new PacketListener() {
+                @Override
+                public void processPacket(Packet packet) {
+                    Message message = (Message) packet;
+                    if (message.getBody() != null) {
+                        if (message.getBody().equals("P")) {
+                            //Position request
+                        }
+                        String fromName = StringUtils.parseBareAddress(message
+                                .getFrom());
+                        Log.i(LOG_TAG, "Text Received " + message.getBody()
+                                + " from " + fromName);
+//						messages.add(fromName + ":");
+//						messages.add(message.getBody());
+//						// Add the incoming message to the list view
+//						mHandler.post(new Runnable() {
+//							public void run() {
+//								setListAdapter();
+//							}
+//						});
+                    }
+                }
+            }, filter);
+
             // dismiss the dialog after getting all products
 //            pDialog.dismiss();
             // updating UI from Background Thread
@@ -1049,59 +1102,8 @@ public class FMFCommunicationService extends Service implements LocationListener
         protected void onPostExecute(Integer result) {
             super.onPostExecute(result);
 
-            if(result.equals(CONNECTED)) {
-                mConnection.getRoster().addRosterListener(FMFCommunicationService.this);
+             if(result.equals(LOGGED_IN)) {
 
-                mChatManager = ChatManager.getInstanceFor(mConnection);
-                if(mChatManager != null) mChatManager.addChatListener( new ChatManagerListener() {
-                    @Override
-                    public void chatCreated(Chat chat, boolean createdLocally) {
-                        if(!createdLocally)
-                        {
-                            chat.addMessageListener(mChatMessageListener);
-
-                            boolean chatAlreadyExists = false;
-                            if(mSenderChats == null)
-                            {
-                                mSenderChats = new ArrayList<Chat>();
-                            } else {
-                                for(Chat aChat : mSenderChats)
-                                {
-                                    if( aChat.getParticipant().equals(chat.getParticipant()) )
-                                        chatAlreadyExists = true;
-                                }
-                            }
-                            if(!chatAlreadyExists)
-                                mSenderChats.add(chat);
-                        }
-                    }
-                });
-                // Add a packet listener to get messages sent to us
-                PacketFilter filter = new MessageTypeFilter(Message.Type.chat);
-                mConnection.addPacketListener(new PacketListener() {
-                    @Override
-                    public void processPacket(Packet packet) {
-                        Message message = (Message) packet;
-                        if (message.getBody() != null) {
-                            if (message.getBody().equals("P")) {
-                                //Position request
-                            }
-                            String fromName = StringUtils.parseBareAddress(message
-                                    .getFrom());
-                            Log.i(LOG_TAG, "Text Received " + message.getBody()
-                                    + " from " + fromName);
-//						messages.add(fromName + ":");
-//						messages.add(message.getBody());
-//						// Add the incoming message to the list view
-//						mHandler.post(new Runnable() {
-//							public void run() {
-//								setListAdapter();
-//							}
-//						});
-                        }
-                    }
-                }, filter);
-            } else if(result.equals(LOGGED_IN)) {
                 Presence p = new Presence(Presence.Type.available);
                 p.setPriority(100);
                 if(mProvider != null) p.setStatus("Available");
