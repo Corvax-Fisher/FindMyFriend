@@ -20,6 +20,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.Toast;
 
 public class ContactListActivity extends FragmentActivity
         implements PositionRequestDialogFragment.RequestDialogListener {
@@ -207,12 +208,19 @@ public class ContactListActivity extends FragmentActivity
         // as you specify a parent activity in AndroidManifest.xml.
         switch (item.getItemId()) {
             case R.id.action_new:
-                Log.d("new","funkz");
-                //inviteContact();
-                return true;
-            case R.id.action_refresh:
-                mService.loadContacts();
-                //refreshContactList();
+                try
+                { Intent i = new Intent(Intent.ACTION_SEND);
+                    i.setType("text/plain");
+                    String sAux = "Follow My Friend ist eine tolle App, mit der Du meine Position herausfindest und mir sofort folgen kannst. Lade Dir gleich die App aus dem Store und probier's aus:\n";
+                    sAux = sAux + "https://play.google.com/store/apps/details?id=bla.bla \n";
+                    i.putExtra(Intent.EXTRA_TEXT, sAux);
+                    startActivity(Intent.createChooser(i, "Freund einladen..."));
+                }
+                catch(Exception e)
+                { //e.toString();
+                    Toast.makeText(getBaseContext(),"Ups, das hat leider nicht funktioniert. Probiere es später erneut.",Toast.LENGTH_SHORT).show();
+                }
+
                 return true;
             default:
                 return super.onOptionsItemSelected(item);

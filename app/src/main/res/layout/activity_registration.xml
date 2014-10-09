@@ -1,8 +1,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
-    android:id="@+id/registration_scroll"
-    android:background="#eeeeee">
+    android:id="@+id/registration_scroll">
 
     <RelativeLayout
         xmlns:tools="http://schemas.android.com/tools"
@@ -48,7 +47,7 @@
             android:inputType="number"
             android:layout_below="@+id/typeNumber"
             android:layout_centerHorizontal="true"
-            android:background="#fff"
+            android:background="#eee"
             android:padding="3dp"
             android:layout_marginTop="3dp"/>
 
@@ -90,7 +89,7 @@
             android:id="@+id/code_no"
             android:layout_below="@+id/typeCode"
             android:layout_centerHorizontal="true"
-            android:background="#fff"
+            android:background="#eee"
             android:padding="3dp"
             android:layout_marginTop="3dp"
             android:visibility="gone"/>

@@ -30,4 +30,6 @@
 
     <string name="message_registration_succeeded">Die Registrierung war erfolgreich.</string>
     <string name="message_registration_failed">Bei der Registrierung ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.</string>
+
+    <string name="noFriendsText">Laden Sie mehr Freunde ein, indem Sie oben auf das "+" Zeichen klicken.</string>
 </resources>
