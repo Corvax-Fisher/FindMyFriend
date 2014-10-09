@@ -10,6 +10,7 @@ import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -91,26 +92,24 @@ public class ContactListAdapter extends ArrayAdapter<FMFListEntry> {
 
     @Override
     public void add(FMFListEntry object) {
-        mStatusChanged.put(object.toString(),false);
         super.add(object);
+        mStatusChanged.put(object.toString(),false);
         sort();
         mReloadStatus = true;
         notifyDataSetChanged();
     }
 
-    private void sort(){
-        sort(new Comparator<FMFListEntry>() {
-            @Override
-            public int compare(FMFListEntry lhs, FMFListEntry rhs) {
-                return lhs.realName.compareToIgnoreCase(rhs.realName);
-            }
-        });
-
-        for (int position = 0; position < this.getCount(); position++)
-            mRosterMap.put(this.getItem(position).jabberID,position);
+    @Override
+    public void addAll(Collection<? extends FMFListEntry> collection) {
+        super.addAll(collection);
+        for(FMFListEntry entry : collection) mStatusChanged.put(entry.toString(),false);
+        sort();
+        mReloadStatus = true;
+        notifyDataSetChanged();
     }
 
     public void setStatusByJabberId(String jabberId, boolean status) {
+        //TODO bugfix: jabberId includes resource, RosterMap doesn't
         if(mRosterMap.get(jabberId) != null)
         {
             if(this.getItem(mRosterMap.get(jabberId)).status != status)
@@ -126,6 +125,22 @@ public class ContactListAdapter extends ArrayAdapter<FMFListEntry> {
         if(mRosterMap.get(jabberId) != null)
             return this.getItem(mRosterMap.get(jabberId)).toString();
         else return null;
+    }
+
+    public boolean contains(String jabberId) {
+        return mRosterMap.containsKey(jabberId);
+    }
+
+    private void sort(){
+        sort(new Comparator<FMFListEntry>() {
+            @Override
+            public int compare(FMFListEntry lhs, FMFListEntry rhs) {
+                return lhs.realName.compareToIgnoreCase(rhs.realName);
+            }
+        });
+
+        for (int position = 0; position < this.getCount(); position++)
+            mRosterMap.put(this.getItem(position).jabberID,position);
     }
 
 //    public void setStatusByPosition(int position, boolean status) {

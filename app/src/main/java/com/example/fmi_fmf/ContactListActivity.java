@@ -6,6 +6,7 @@ import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
@@ -301,6 +302,13 @@ public class ContactListActivity extends FragmentActivity
                 if(mProgressDialog ==null) mProgressDialog = new ProgressDialog(this);
                 mProgressDialog.setMessage("Auf Antwort warten...");
                 mProgressDialog.setIndeterminate(true);
+                mProgressDialog.setCancelable(false);
+                mProgressDialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                    @Override
+                    public void onDismiss(DialogInterface dialog) {
+                        mService.cancelTimerTask();
+                    }
+                });
                 mProgressDialog.show();
             }
         }

@@ -35,6 +35,7 @@ import org.jivesoftware.smack.ChatManagerListener;
 import org.jivesoftware.smack.MessageListener;
 import org.jivesoftware.smack.PacketListener;
 import org.jivesoftware.smack.RosterEntry;
+import org.jivesoftware.smack.RosterListener;
 import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
@@ -61,7 +62,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ExecutionException;
 
-public class FMFCommunicationService extends Service implements LocationListener {
+public class FMFCommunicationService extends Service implements LocationListener, RosterListener {
 
     private final String LOG_TAG = FMFCommunicationService.class.getSimpleName();
 
@@ -142,8 +143,7 @@ public class FMFCommunicationService extends Service implements LocationListener
         public void onReceive(Context context, Intent intent) {
             if(intent.getAction().equals(LocationManager.PROVIDERS_CHANGED_ACTION))
             {
-                if(ContactListActivity.D)
-                    Toast.makeText(FMFCommunicationService.this,"Providers changed",Toast.LENGTH_SHORT).show();
+                if(ContactListActivity.D) Log.d(LOG_TAG,"Providers changed");
                 // Creating a criteria object to retrieve provider
                 Criteria criteria = new Criteria();
                 criteria.setAccuracy(Criteria.ACCURACY_FINE);
@@ -152,11 +152,15 @@ public class FMFCommunicationService extends Service implements LocationListener
                 String bestProvider = mLocationManager.getBestProvider(criteria, true);
                 if(bestProvider == null && mProvider != null) {
                     mLocationManager.removeUpdates(FMFCommunicationService.this);
+                    p.setStatus("Not available");
+                    p.setPriority(1337);
                     p.setMode(Presence.Mode.xa);
                 }
                  else if(mProvider == null) {
                     if(bestProvider != null) {
                         mLocationManager.requestLocationUpdates(bestProvider, 0, 5, FMFCommunicationService.this);
+                        p.setStatus("Available");
+                        p.setPriority(1337);
                         p.setMode(Presence.Mode.available);
                     }
                 } else if(!mProvider.equals(bestProvider)) {
@@ -293,6 +297,10 @@ public class FMFCommunicationService extends Service implements LocationListener
         }
     }
 
+    public void cancelTimerTask() {
+        mRequestTimerTask.cancel();
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -337,6 +345,8 @@ public class FMFCommunicationService extends Service implements LocationListener
         } else {
             if(mConnection.isAuthenticated()) {
                 Presence p = new Presence(Presence.Type.available);
+                p.setStatus("Not available");
+                p.setPriority(1337);
                 p.setMode(Presence.Mode.xa);
                 try {
                     mConnection.sendPacket(p);
@@ -582,42 +592,44 @@ public class FMFCommunicationService extends Service implements LocationListener
 
         @Override
         public void processMessage(Chat chat, Message message) {
-            String fullName = mContactsAdapter.resolveJabberIdToRealName(chat.getParticipant());
-            if(fullName == null) fullName = jabberIdToPhoneNumber(chat.getParticipant());
-            LocationManager lm = (LocationManager) getSystemService(LOCATION_SERVICE);
-            if(message.getBody().equals("P")) {
-                //Position request
-                notifyAboutRequest(chat.getParticipant(), fullName);
-                lm.requestLocationUpdates(mProvider,0,5,FMFCommunicationService.this);
-            } else if(message.getBody().equals("N")) {
-                //Position request rejected
-                notifyAboutDecline(fullName);
-            } else if(message.getBody().equals("S")) {
-                //Stop sending location updates to sender by removing him from the ArrayList
-                mAcceptedJabberIds.remove(chat.getParticipant());
-                if(mAcceptedJabberIds.isEmpty())
-                    lm.removeUpdates(FMFCommunicationService.this);
-            } else if(message.getBody().equals("A")) {
-                mRequestTimerTask.cancel();
-                notifyAboutAccept(fullName);
-            } else {
-                // Lat Lon coordinates should be received
-                String strLatLng[] = message.getBody().split(":");
-                if(strLatLng.length == 2) // Lat Lon coordinates received
-                {
-                    double dLatLng[] = new double[2];
-                    boolean isPosition;
-                    try {
-                        dLatLng[0] = Double.parseDouble(strLatLng[0]);
-                        dLatLng[1] = Double.parseDouble(strLatLng[1]);
-                        isPosition = true;
-                    } catch (NumberFormatException e) {
-                        isPosition = false;
-                    }
-                    if(isPosition) {
-                        Intent i = new Intent(MapsActivity.UPDATE_FRIEND_LOCATION)
-                                .putExtra(EXTRA_FRIEND_LOCATION,dLatLng);
-                        LocalBroadcastManager.getInstance(FMFCommunicationService.this).sendBroadcast(i);
+            if(message.getFrom().equals(chat.getParticipant())) {
+                String fullName = mContactsAdapter.resolveJabberIdToRealName(chat.getParticipant());
+                if(fullName == null) fullName = jabberIdToPhoneNumber(chat.getParticipant());
+                LocationManager lm = (LocationManager) getSystemService(LOCATION_SERVICE);
+                if(message.getBody().equals("P")) {
+                    //Position request
+                    notifyAboutRequest(chat.getParticipant(), fullName);
+                    if(mProvider != null) lm.requestLocationUpdates(mProvider,0,5,FMFCommunicationService.this);
+                } else if(message.getBody().equals("N")) {
+                    //Position request rejected
+                    notifyAboutDecline(fullName);
+                } else if(message.getBody().equals("S")) {
+                    //Stop sending location updates to sender by removing him from the ArrayList
+                    mAcceptedJabberIds.remove(chat.getParticipant());
+                    if(mAcceptedJabberIds.isEmpty())
+                        lm.removeUpdates(FMFCommunicationService.this);
+                } else if(message.getBody().equals("A")) {
+                    mRequestTimerTask.cancel();
+                    notifyAboutAccept(fullName);
+                } else {
+                    // Lat Lon coordinates should be received
+                    String strLatLng[] = message.getBody().split(":");
+                    if(strLatLng.length == 2) // Lat Lon coordinates received
+                    {
+                        double dLatLng[] = new double[2];
+                        boolean isPosition;
+                        try {
+                            dLatLng[0] = Double.parseDouble(strLatLng[0]);
+                            dLatLng[1] = Double.parseDouble(strLatLng[1]);
+                            isPosition = true;
+                        } catch (NumberFormatException e) {
+                            isPosition = false;
+                        }
+                        if(isPosition) {
+                            Intent i = new Intent(MapsActivity.UPDATE_FRIEND_LOCATION)
+                                    .putExtra(EXTRA_FRIEND_LOCATION,dLatLng);
+                            LocalBroadcastManager.getInstance(FMFCommunicationService.this).sendBroadcast(i);
+                        }
                     }
                 }
             }
@@ -769,7 +781,7 @@ public class FMFCommunicationService extends Service implements LocationListener
     @Override
     public void onLocationChanged(Location location) {
         mCurrentLocation = location.getLatitude()+":"+location.getLongitude();
-        Toast.makeText(this,mCurrentLocation,Toast.LENGTH_SHORT).show();
+        if(ContactListActivity.D) Log.d(LOG_TAG,"onLocationChanged: " + mCurrentLocation);
         if(mAcceptedJabberIds != null)
         {
             Chat chat;
@@ -789,8 +801,7 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     @Override
     public void onStatusChanged(String provider, int status, Bundle extras) {
-        if(ContactListActivity.D)
-            Toast.makeText(this,"onStatusChanged",Toast.LENGTH_SHORT).show();
+        if(ContactListActivity.D) Log.d(LOG_TAG, "onStatusChanged");
 
         Presence p = new Presence(Presence.Type.available);
         if(status == LocationProvider.AVAILABLE) p.setMode(Presence.Mode.available);
@@ -815,8 +826,7 @@ public class FMFCommunicationService extends Service implements LocationListener
         //TODO (Martin): this might be obsolete because we're receiving PROVIDERS_CHANGED_ACTION
 
         //TODO send Presence packet
-        if(ContactListActivity.D)
-            Toast.makeText(this,"onProviderDisabled",Toast.LENGTH_SHORT).show();
+        if(ContactListActivity.D) Log.d(LOG_TAG,"onProviderDisabled");
 //        if(provider.equals(mProvider))
 //        {
 //            mLocationManager.removeUpdates(this);
@@ -898,30 +908,21 @@ public class FMFCommunicationService extends Service implements LocationListener
                         JSONObject c = contacts.getJSONObject(i);
 
                         // Storing each json item in variable
-                        String id = c.getString(TAG_RID);
+//                        String id = c.getString(TAG_RID);
                         String number = c.getString(TAG_NUMBER);
 
                         //getting all registered numbers and searching for their contactname in phone
                         // own number shouldnt be in the contact list activity
 
                         if (!number.equals(myNumber)) {
-                            //TODO add contact names to ArrayList ret
                             String contactname = getContactName(FMFCommunicationService.this, number);
 
-                            // creating new HashMap
-                            HashMap<String, String> map = new HashMap<String, String>();
-
-                            // adding each child node to HashMap key => value
-                            map.put(TAG_RID, id);
-                            map.put(TAG_NUMBER, contactname);
-
-                            // adding HashList to ArrayList
+                            // adding jabber ID and contact name to ArrayList
                             if(contactname != null){
                                 String jabberId = phoneNumberToJabberId(number);
                                 ret.add(jabberId + ":::" + contactname);
                             }
                         }
-
                     }
                 } else {
                     // no contacts found
@@ -939,10 +940,15 @@ public class FMFCommunicationService extends Service implements LocationListener
          * **/
         protected void onPostExecute(Collection<String> contactData) {
             mLoadContactsTaskIsRunning = false;
+            ArrayList<FMFListEntry> listEntries = new ArrayList<FMFListEntry>(contactData.size());
             for(String contact: contactData)
             {
                 String contactDataSplit[] = contact.split(":::");
-                mContactsAdapter.add(new FMFListEntry(contactDataSplit[0],contactDataSplit[1]));
+                if(mContactsAdapter.contains(contactDataSplit[0])) continue;
+
+                FMFListEntry listEntry = new FMFListEntry(contactDataSplit[0],contactDataSplit[1]);
+
+//                mContactsAdapter.add(new FMFListEntry(contactDataSplit[0],contactDataSplit[1]));
                 RosterEntry roster = mConnection.getRoster().getEntry(contactDataSplit[0]);
                 if(roster == null){
                     try {
@@ -959,9 +965,11 @@ public class FMFCommunicationService extends Service implements LocationListener
                 }
                 Presence p = mConnection.getRoster().getPresence(contactDataSplit[0]);
                 if(p.getMode() == Presence.Mode.available)
-                    mContactsAdapter.setStatusByJabberId(contactDataSplit[0],true);
+                    listEntry.status = FMFListEntry.ONLINE;
+//                    mContactsAdapter.setStatusByJabberId(contactDataSplit[0],true);
+                listEntries.add(listEntry);
             }
-
+            mContactsAdapter.addAll(listEntries);
             // dismiss the dialog after getting all products
 //            pDialog.dismiss();
             // updating UI from Background Thread
@@ -1040,7 +1048,7 @@ public class FMFCommunicationService extends Service implements LocationListener
             super.onPostExecute(result);
 
             if(result.equals(CONNECTED)) {
-                mConnection.getRoster().addRosterListener(new FMFRosterListener(mContactsAdapter));
+                mConnection.getRoster().addRosterListener(FMFCommunicationService.this);
 
                 mChatManager = ChatManager.getInstanceFor(mConnection);
                 if(mChatManager != null) mChatManager.addChatListener( new ChatManagerListener() {
@@ -1093,7 +1101,10 @@ public class FMFCommunicationService extends Service implements LocationListener
                 }, filter);
             } else if(result.equals(LOGGED_IN)) {
                 Presence p = new Presence(Presence.Type.available);
-                p.setMode(Presence.Mode.available);
+                p.setStatus("Available");
+                p.setPriority(1337);
+                if(mProvider != null) p.setMode(Presence.Mode.available);
+                else p.setMode(Presence.Mode.xa);
                 try {
                     mConnection.sendPacket(p);
                 } catch (SmackException.NotConnectedException e) {
@@ -1102,5 +1113,33 @@ public class FMFCommunicationService extends Service implements LocationListener
                 loadContacts();
             }
         }
+    }
+
+    @Override
+    public void entriesAdded(Collection<String> strings) {
+        //TODO Martin do a database lookup to find out if this is a FMF user
+        //TODO if yes, add to contact list, otherwise unsubscribe that user
+        loadContacts();
+    }
+
+    @Override
+    public void entriesUpdated(Collection<String> strings) {
+        //may change the name in the listView
+    }
+
+    @Override
+    public void entriesDeleted(Collection<String> strings) {
+        //Nothing to do
+    }
+
+    @Override
+    public void presenceChanged(Presence presence) {
+        boolean status;
+        String fromJabberId = presence.getFrom().split("/")[0];
+
+        if(presence.getMode() == Presence.Mode.available) status = FMFListEntry.ONLINE;
+        else status = FMFListEntry.OFFLINE;
+
+        mContactsAdapter.setStatusByJabberId(fromJabberId,status);
     }
 }
