@@ -153,14 +153,14 @@ public class FMFCommunicationService extends Service implements LocationListener
                 if(bestProvider == null && mProvider != null) {
                     mLocationManager.removeUpdates(FMFCommunicationService.this);
                     p.setStatus("Not available");
-                    p.setPriority(1337);
+                    p.setPriority(100);
                     p.setMode(Presence.Mode.xa);
                 }
                  else if(mProvider == null) {
                     if(bestProvider != null) {
                         mLocationManager.requestLocationUpdates(bestProvider, 0, 5, FMFCommunicationService.this);
                         p.setStatus("Available");
-                        p.setPriority(1337);
+                        p.setPriority(100);
                         p.setMode(Presence.Mode.available);
                     }
                 } else if(!mProvider.equals(bestProvider)) {
@@ -346,7 +346,7 @@ public class FMFCommunicationService extends Service implements LocationListener
             if(mConnection.isAuthenticated()) {
                 Presence p = new Presence(Presence.Type.available);
                 p.setStatus("Not available");
-                p.setPriority(1337);
+                p.setPriority(100);
                 p.setMode(Presence.Mode.xa);
                 try {
                     mConnection.sendPacket(p);
@@ -1102,7 +1102,7 @@ public class FMFCommunicationService extends Service implements LocationListener
             } else if(result.equals(LOGGED_IN)) {
                 Presence p = new Presence(Presence.Type.available);
                 p.setStatus("Available");
-                p.setPriority(1337);
+                p.setPriority(100);
                 if(mProvider != null) p.setMode(Presence.Mode.available);
                 else p.setMode(Presence.Mode.xa);
                 try {
