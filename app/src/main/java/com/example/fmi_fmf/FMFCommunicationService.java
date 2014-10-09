@@ -851,8 +851,6 @@ public class FMFCommunicationService extends Service implements LocationListener
         private static final String TAG_RID = "rID";
         private static final String TAG_NUMBER = "registeredNumber";
 
-        private ProgressDialog pDialog;
-
         // products JSONArray
         JSONArray contacts = null;
         /**
@@ -862,12 +860,6 @@ public class FMFCommunicationService extends Service implements LocationListener
         protected void onPreExecute() {
             super.onPreExecute();
             mLoadContactsTaskIsRunning = true;
-
-            pDialog = new ProgressDialog(FMFCommunicationService.this);
-            pDialog.setMessage("Kontakte werden geladen...");
-            pDialog.setIndeterminate(true);
-            pDialog.setCancelable(false);
-            pDialog.show();
         }
 
         /**
@@ -965,8 +957,6 @@ public class FMFCommunicationService extends Service implements LocationListener
                 listEntries.add(listEntry);
             }
             mContactsAdapter.addAll(listEntries);
-
-            pDialog.dismiss();
 
             mConnection.getRoster().addRosterListener(FMFCommunicationService.this);
 
