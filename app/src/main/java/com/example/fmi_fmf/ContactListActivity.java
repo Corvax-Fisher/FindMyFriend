@@ -28,8 +28,6 @@ public class ContactListActivity extends FragmentActivity
     private static final String LOG_TAG = ContactListActivity.class.getSimpleName();
     public static final boolean D = true;
 
-    public static final String ACTION_CANCEL_WAIT_PROGRESS = "cancel wait progress";
-    public static final String ACTION_SHOW_CONTACTS = "show contacts";
     public static final String ACTION_SHOW_REQUEST_DIALOG = "show request dialog";
     public static final String ACTION_SHOW_DECLINE_DIALOG = "show decline dialog";
     public static final String ACTION_OPEN_MAP = "open map";
@@ -37,11 +35,7 @@ public class ContactListActivity extends FragmentActivity
 //    public static final String EXTRA_FULL_NAME = "full name";
 //    public static final String EXTRA_PHONE_NUMBER = "phone number";
 //
-//    public static final String USERNAME = "username";
-//    public static final String PASSWORD = "password";
-
     public static boolean isActive = false;
-    private ProgressDialog mProgressDialog;
 //    private PositionRequestDialogFragment mRequestDialog;
     private NoProviderDialogFragment mNoProviderDialog;
 //    private AlertDialog mNotConnectedAlert;
@@ -66,15 +60,8 @@ public class ContactListActivity extends FragmentActivity
         @Override
         public void onReceive(Context context, Intent intent) {
             if(D) Log.d(LOG_TAG, "broadcast received");
-            if(intent.getAction().equals(ACTION_CANCEL_WAIT_PROGRESS)) {
-                mProgressDialog.dismiss();
-//                Toast.makeText(getBaseContext(), "Friend didn't answer.\nrequest timed out",
-//                        Toast.LENGTH_SHORT).show();
-                AlertDialog.Builder builder = new AlertDialog.Builder(ContactListActivity.this);
-                builder.setMessage("Friend didn't answer.\nTry again later.");
-                AlertDialog pauseDialog = builder.create();
-                pauseDialog.show();
-            } else if(intent.getAction().equals(ACTION_SHOW_REQUEST_DIALOG)) {
+
+            if(intent.getAction().equals(ACTION_SHOW_REQUEST_DIALOG)) {
                 mRequesterJabberId = intent.getStringExtra(FMFCommunicationService.EXTRA_JABBER_ID);
                 String from = intent.getStringExtra(FMFCommunicationService.EXTRA_FULL_NAME);
                 PositionRequestDialogFragment.getInstance().setFullName(from);
@@ -252,9 +239,6 @@ public class ContactListActivity extends FragmentActivity
             mBound = false;
         }
 
-        if(mProgressDialog != null) {
-            if(mProgressDialog.isShowing()) mProgressDialog.dismiss();
-        }
 //        if(mNoProviderDialog != null) {
 //            if(mNoProviderDialog.isVisible()) mNoProviderDialog.dismiss();
 //        }
@@ -272,8 +256,6 @@ public class ContactListActivity extends FragmentActivity
     protected void onResume() {
         super.onResume();
         if (D) Log.d(LOG_TAG, "onResume");
-        LocalBroadcastManager.getInstance(this).registerReceiver(br,
-                new IntentFilter(ACTION_CANCEL_WAIT_PROGRESS));
         LocalBroadcastManager.getInstance(this).registerReceiver(br,
                 new IntentFilter(ACTION_SHOW_REQUEST_DIALOG));
     }
@@ -307,17 +289,7 @@ public class ContactListActivity extends FragmentActivity
                         .create();
                 notConnectedAlert.show();
             } else if(ret == FMFCommunicationService.RET_CODE.OK) {
-                if(mProgressDialog ==null) mProgressDialog = new ProgressDialog(this);
-                mProgressDialog.setMessage("Auf Antwort warten...");
-                mProgressDialog.setIndeterminate(true);
-                mProgressDialog.setCancelable(false);
-                mProgressDialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
-                    @Override
-                    public void onDismiss(DialogInterface dialog) {
-                        mService.cancelTimerTask();
-                    }
-                });
-                mProgressDialog.show();
+                Toast.makeText(this,"Anfrage wurde gesendet",Toast.LENGTH_LONG).show();
             }
         }
     }

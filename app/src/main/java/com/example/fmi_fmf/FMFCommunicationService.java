@@ -2,6 +2,7 @@ package com.example.fmi_fmf;
 
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.ProgressDialog;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
@@ -66,8 +67,6 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     private final String LOG_TAG = FMFCommunicationService.class.getSimpleName();
 
-    private final long REQUEST_TIMEOUT = 10000L; // 10 seconds
-
     public static final String ACTION_SEND_STOP = "send stop";
 
     public static final String EXTRA_FRIEND_LOCATION = "friend location";
@@ -97,7 +96,6 @@ public class FMFCommunicationService extends Service implements LocationListener
     private final Integer LOGGED_IN = 5;
     private final Integer NOT_LOGGED_IN = 6;
     private AsyncTask<Integer, Void, Integer> mConnectionTask;
-    private AsyncTask<String, String, Collection<String>> mLoadContactsTask;
     private boolean mLoadContactsTaskIsRunning = false;
 
     public enum RET_CODE {OK, NO_PROVIDER, NOT_CONNECTED};
@@ -129,13 +127,7 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     // Binder given to clients
     private final IBinder mBinder = new LocalBinder();
-    private final TimerTask mRequestTimerTask = new TimerTask() {
-        @Override
-        public void run() {
-            Intent i = new Intent(ContactListActivity.ACTION_CANCEL_WAIT_PROGRESS);
-            LocalBroadcastManager.getInstance(FMFCommunicationService.this).sendBroadcast(i);
-        }
-    };
+
     private String mCurrentLocation;
 
     private BroadcastReceiver br = new BroadcastReceiver() {
@@ -214,8 +206,6 @@ public class FMFCommunicationService extends Service implements LocationListener
         mReceiverChat = mChatManager.createChat(myFriendsJabberId,mChatMessageListener);
         try {
             mReceiverChat.sendMessage("P");
-            Timer t = new Timer();
-            t.schedule(mRequestTimerTask,REQUEST_TIMEOUT);
         } catch (XMPPException e) {
             e.printStackTrace();
         } catch (SmackException.NotConnectedException e) {
@@ -241,7 +231,7 @@ public class FMFCommunicationService extends Service implements LocationListener
     }
 
     public void sendDecline(String myFriendsJabberId) {
-        if(ContactListActivity.D) Log.d(LOG_TAG,"sending decline to " + myFriendsJabberId);
+        if(ContactListActivity.D) Log.d(LOG_TAG, "sending decline to " + myFriendsJabberId);
 
         Chat chat = findSenderChat(myFriendsJabberId);
         if(chat != null) try {
@@ -291,12 +281,8 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     public void loadContacts() {
         if(mConnection.isAuthenticated() && !mLoadContactsTaskIsRunning) {
-            mLoadContactsTask = new LoadAllContacts().execute();
+            new LoadAllContacts().execute();
         }
-    }
-
-    public void cancelTimerTask() {
-        mRequestTimerTask.cancel();
     }
 
     @Override
@@ -614,7 +600,6 @@ public class FMFCommunicationService extends Service implements LocationListener
                     if(mAcceptedJabberIds.isEmpty())
                         lm.removeUpdates(FMFCommunicationService.this);
                 } else if(message.getBody().equals("A")) {
-                    mRequestTimerTask.cancel();
                     notifyAboutAccept(fullName);
                 } else {
                     // Lat Lon coordinates should be received
@@ -866,6 +851,8 @@ public class FMFCommunicationService extends Service implements LocationListener
         private static final String TAG_RID = "rID";
         private static final String TAG_NUMBER = "registeredNumber";
 
+        private ProgressDialog pDialog;
+
         // products JSONArray
         JSONArray contacts = null;
         /**
@@ -875,6 +862,12 @@ public class FMFCommunicationService extends Service implements LocationListener
         protected void onPreExecute() {
             super.onPreExecute();
             mLoadContactsTaskIsRunning = true;
+
+            pDialog = new ProgressDialog(FMFCommunicationService.this);
+            pDialog.setMessage("Kontakte werden geladen...");
+            pDialog.setIndeterminate(true);
+            pDialog.setCancelable(false);
+            pDialog.show();
         }
 
         /**
@@ -972,6 +965,8 @@ public class FMFCommunicationService extends Service implements LocationListener
                 listEntries.add(listEntry);
             }
             mContactsAdapter.addAll(listEntries);
+
+            pDialog.dismiss();
 
             mConnection.getRoster().addRosterListener(FMFCommunicationService.this);
 
