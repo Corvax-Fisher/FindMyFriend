@@ -16,6 +16,9 @@
     <string name="title_no_provider_enabled">Standort nicht verfügbar</string>
     <string name="message_no_provider_enabled">Diese App benötigt deinen Standort.\nMöchtest du ihn jetzt freigeben?\n(Standort-Menü öffnet sich)</string>
 
+    <string name="title_not_connected_dialog">Keine Internetverbindung</string>
+    <string name="message_not_connected_dialog">Du hast keine Verbindung zum Internet.\nMöchtest du jetzt die Netzwerkeinstellungen öffnen?</string>
+
     <string name="title_not_connected">Keine Verbindung</string>
     <string name="message_not_connected">Du bist nicht verbunden.\nAnfrage kann nicht gesendet werden.</string>
 

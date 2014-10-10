@@ -46,6 +46,8 @@ public class ContactListAdapter extends ArrayAdapter<FMFListEntry> {
         mRosterMap = new HashMap<String, Integer>();
     }
 
+
+
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
         //TODO: implement this
@@ -129,6 +131,8 @@ public class ContactListAdapter extends ArrayAdapter<FMFListEntry> {
     public boolean contains(String jabberId) {
         return mRosterMap.containsKey(jabberId);
     }
+
+    public void reload() { mReloadStatus = true; }
 
     private void sort(){
         sort(new Comparator<FMFListEntry>() {

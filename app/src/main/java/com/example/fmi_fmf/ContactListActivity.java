@@ -30,6 +30,7 @@ public class ContactListActivity extends FragmentActivity
 
     public static final String ACTION_SHOW_REQUEST_DIALOG = "show request dialog";
     public static final String ACTION_SHOW_DECLINE_DIALOG = "show decline dialog";
+    public static final String ACTION_SHOW_DISCONNECTED_DIALOG = "show disconnected dialog";
     public static final String ACTION_OPEN_MAP = "open map";
 
 //    public static final String EXTRA_FULL_NAME = "full name";
@@ -75,6 +76,9 @@ public class ContactListActivity extends FragmentActivity
                         .setMessage(from + " hat deine Anfrage abgelehnt")
                         .create();
                 requestDeclinedAlert.show();
+            } else if(intent.getAction().equals(ACTION_SHOW_DISCONNECTED_DIALOG)) {
+                NotConnectedDialogFragment ncdf = new NotConnectedDialogFragment();
+                ncdf.show(getSupportFragmentManager(),"not connected");
             }
         }
     };
@@ -94,6 +98,10 @@ public class ContactListActivity extends FragmentActivity
             {
                 if(mNoProviderDialog == null) mNoProviderDialog = new NoProviderDialogFragment();
                 if(!mNoProviderDialog.isAdded()) mNoProviderDialog.show(getSupportFragmentManager(), "No Provider Dialog");
+            }
+            if(!mService.isConnected()) {
+                NotConnectedDialogFragment ncdf = new NotConnectedDialogFragment();
+                ncdf.show(getSupportFragmentManager(),"not connected");
             }
 //            FMFCommunicationService.N_INFO notificationInfo = mService.getNotificationInfo();
             NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
@@ -258,6 +266,10 @@ public class ContactListActivity extends FragmentActivity
         if (D) Log.d(LOG_TAG, "onResume");
         LocalBroadcastManager.getInstance(this).registerReceiver(br,
                 new IntentFilter(ACTION_SHOW_REQUEST_DIALOG));
+        LocalBroadcastManager.getInstance(this).registerReceiver(br,
+                new IntentFilter(ACTION_SHOW_DECLINE_DIALOG));
+        LocalBroadcastManager.getInstance(this).registerReceiver(br,
+                new IntentFilter(ACTION_SHOW_DISCONNECTED_DIALOG));
     }
 
     @Override
