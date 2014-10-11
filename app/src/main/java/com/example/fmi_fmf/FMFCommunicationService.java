@@ -101,7 +101,7 @@ public class FMFCommunicationService extends Service implements LocationListener
     private ChatManager mChatManager;
     private Chat mReceiverChat;
     private ArrayList<Chat> mSenderChats;
-    private ArrayList<String> mAcceptedJabberIds;
+    private Set<String> mAcceptedJabberIds;
     private String mProvider;
     private NotificationManager mNotificationManager;
 
@@ -200,7 +200,7 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     /** methods for clients */
     public boolean isProviderAvailable() {
-        return mProvider != null && mProvider != LocationManager.PASSIVE_PROVIDER;
+        return ((mProvider != null) && !mProvider.equals(LocationManager.PASSIVE_PROVIDER)) ;
     }
 
     public RET_CODE sendRequest(String myFriendsJabberId) {
@@ -222,7 +222,7 @@ public class FMFCommunicationService extends Service implements LocationListener
     public void sendAccept(String myFriendsJabberId) {
         if(ContactListActivity.D) Log.d(LOG_TAG,"sending an accept to " + myFriendsJabberId);
 
-        if(mAcceptedJabberIds == null) mAcceptedJabberIds = new ArrayList<String>();
+        if(mAcceptedJabberIds == null) mAcceptedJabberIds = new HashSet<String>();
         mAcceptedJabberIds.add(myFriendsJabberId);
         Chat chat = findSenderChat(myFriendsJabberId);
         if(chat != null) try {
@@ -483,7 +483,7 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     //TODO change back to private after test
     public void notifyAboutRequest(String jabberId, String fullName){
-        if(ContactListActivity.isActive)
+        if(ContactListActivity.isActive || MapsActivity.isActive)
         {
             Intent i = new Intent(ContactListActivity.ACTION_SHOW_REQUEST_DIALOG)
                     .putExtra(EXTRA_JABBER_ID,jabberId)
@@ -819,7 +819,8 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     @Override
     public void onStatusChanged(String provider, int status, Bundle extras) {
-        if(ContactListActivity.D) Log.d(LOG_TAG, "onStatusChanged");
+        if(ContactListActivity.D) Log.d(LOG_TAG,
+                "onStatusChanged: Provider: "+ provider + " status: " + status);
 
         Presence p = new Presence(Presence.Type.available);
         if(status == LocationProvider.AVAILABLE) p.setStatus("Available");

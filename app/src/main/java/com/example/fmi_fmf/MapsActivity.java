@@ -52,6 +52,8 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
     private Marker myLocationMarker;
     private Marker friendLocationMarker;
 
+    public static boolean isActive = false;
+
     BroadcastReceiver br = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -66,7 +68,8 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
                             .position(point)
                             .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
                             .draggable(false)
-                            .title("Ich"));
+                            .title("Mein Freund"));
+                    friendLocationMarker.showInfoWindow();
                 }
                 else friendLocationMarker.setPosition(point);
 
@@ -98,6 +101,8 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
 
+        isActive = true;
+
         getActionBar().setDisplayHomeAsUpEnabled(true);
 
         setUpMapIfNeeded();
@@ -123,7 +128,7 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
             mMap = fm.getMap();
 
             // Enable MyLocation Button in the Map
-            mMap.setMyLocationEnabled(true);
+//            mMap.setMyLocationEnabled(true);
 
 
             // Getting LocationManager object from System Service LOCATION_SERVICE
@@ -195,6 +200,7 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
         super.onStop();
         startService(new Intent(this,FMFCommunicationService.class)
                 .setAction(FMFCommunicationService.ACTION_SEND_STOP));
+        isActive = false;
         finish();
     }
 
@@ -428,14 +434,15 @@ private class ParserTask extends AsyncTask<String, Integer, List<List<HashMap<St
         {
             myLocationMarker = mMap.addMarker(new MarkerOptions()
                     .position(point)
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
                     .draggable(false)
                     .title("Ich"));
+            myLocationMarker.showInfoWindow();
+            mMap.moveCamera(CameraUpdateFactory.newLatLng(point));
+            mMap.animateCamera(CameraUpdateFactory.zoomTo(12));
         }
         else myLocationMarker.setPosition(point);
 
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(point));
-        mMap.animateCamera(CameraUpdateFactory.zoomTo(12));
 
         if(friendLocationMarker != null)
         {
