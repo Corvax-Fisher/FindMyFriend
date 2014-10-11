@@ -88,7 +88,7 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
                 mRequesterJabberId = intent.getStringExtra(FMFCommunicationService.EXTRA_JABBER_ID);
                 String from = intent.getStringExtra(FMFCommunicationService.EXTRA_FULL_NAME);
                 PositionRequestDialogFragment.getInstance().setFullName(from);
-                if(!PositionRequestDialogFragment.getInstance().isVisible())
+                if(!PositionRequestDialogFragment.getInstance().isAdded())
                     PositionRequestDialogFragment.getInstance()
                             .show(getSupportFragmentManager(), "Position request");
             }

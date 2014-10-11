@@ -8,6 +8,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -67,9 +68,7 @@ public class ContactListAdapter extends ArrayAdapter<FMFListEntry> {
                     statusTransition.startTransition(500);
                 else statusTransition.reverseTransition(500);
             }
-        }
-
-        else if(convertView != null) {
+        } else {
             ImageView statusView = (ImageView) convertView.findViewById(R.id.statusView);
             TransitionDrawable statusTransition = (TransitionDrawable) statusView.getDrawable();
             if(mReloadStatus) {
@@ -88,8 +87,10 @@ public class ContactListAdapter extends ArrayAdapter<FMFListEntry> {
                 else statusTransition.reverseTransition(500);
             }
         }
+        TextView nameView = (TextView) convertView.findViewById(R.id.nameView);
+        nameView.setText(this.getItem(position).toString());
 
-        return super.getView(position, convertView, parent);
+        return convertView; //super.getView(position, convertView, parent);
     }
 
     @Override
@@ -104,7 +105,10 @@ public class ContactListAdapter extends ArrayAdapter<FMFListEntry> {
     @Override
     public void addAll(Collection<? extends FMFListEntry> collection) {
         super.addAll(collection);
-        for(FMFListEntry entry : collection) mStatusChanged.put(entry.toString(),false);
+        for(FMFListEntry entry : collection) {
+            if( entry.status == FMFListEntry.ONLINE) mStatusChanged.put(entry.toString(),true);
+            else mStatusChanged.put(entry.toString(),false);
+        }
         sort();
         mReloadStatus = true;
         notifyDataSetChanged();

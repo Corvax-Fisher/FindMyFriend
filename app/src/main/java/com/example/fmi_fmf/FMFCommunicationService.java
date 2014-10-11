@@ -137,34 +137,15 @@ public class FMFCommunicationService extends Service implements LocationListener
                 // Creating a criteria object to retrieve provider
                 Criteria criteria = new Criteria();
                 criteria.setAccuracy(Criteria.ACCURACY_FINE);
-                Presence p = new Presence(Presence.Type.available);
                 // Getting the name of the best provider
                 String bestProvider = mLocationManager.getBestProvider(criteria, true);
                 if(bestProvider == null && mProvider != null) {
                     mLocationManager.removeUpdates(FMFCommunicationService.this);
-                    p.setStatus("Not available");
-                    p.setPriority(100);
-                    p.setMode(Presence.Mode.xa);
-                }
-                 else if(mProvider == null) {
-                    if(bestProvider != null) {
-//                        mLocationManager.requestLocationUpdates(bestProvider, 5000, 0, FMFCommunicationService.this);
-                        p.setStatus("Available");
-                        p.setPriority(100);
-                        p.setMode(Presence.Mode.available);
-                    }
                 } else if(!mProvider.equals(bestProvider)) {
                     mLocationManager.removeUpdates(FMFCommunicationService.this);
-//                    mLocationManager.requestLocationUpdates(bestProvider, 5000, 0, FMFCommunicationService.this);
                 }
                 mProvider = bestProvider;
-                if(mConnection.isAuthenticated() && mConnection.isConnected() && p.getMode() != null) {
-                    try {
-                        mConnection.sendPacket(p);
-                    } catch (SmackException.NotConnectedException e) {
-                        e.printStackTrace();
-                    }
-                }
+                sendCurrentPresence();
             } else if(intent.getAction().equals(ConnectivityManager.CONNECTIVITY_ACTION)) {
                 boolean connected = !intent.getBooleanExtra(ConnectivityManager.EXTRA_NO_CONNECTIVITY,false);
                 if(!connected)
@@ -636,6 +617,7 @@ public class FMFCommunicationService extends Service implements LocationListener
                             isPosition = false;
                         }
                         if(isPosition) {
+                            Log.d(LOG_TAG,"LOCATION RECEIVED: lat: " + dLatLng[0] + "lon: " + dLatLng[1]);
                             Intent i = new Intent(MapsActivity.UPDATE_FRIEND_LOCATION)
                                     .putExtra(EXTRA_FRIEND_LOCATION,dLatLng);
                             LocalBroadcastManager.getInstance(FMFCommunicationService.this).sendBroadcast(i);
@@ -654,14 +636,17 @@ public class FMFCommunicationService extends Service implements LocationListener
     }
 
     private void sendCurrentPresence() {
-        Presence p = new Presence(Presence.Type.available);
-        p.setPriority(100);
-        if(isProviderAvailable()) p.setStatus("Available");
-        else p.setStatus("Not available");
-        try {
-            mConnection.sendPacket(p);
-        } catch (SmackException.NotConnectedException e) {
-            e.printStackTrace();
+        if(mConnection.isAuthenticated() && mConnection.isConnected()) {
+            if(ContactListActivity.D) Log.d(LOG_TAG,"sending current presence");
+            Presence p = new Presence(Presence.Type.available);
+            p.setPriority(100);
+            if(isProviderAvailable()) p.setStatus("Available");
+            else p.setStatus("Not available");
+            try {
+                mConnection.sendPacket(p);
+            } catch (SmackException.NotConnectedException e) {
+                e.printStackTrace();
+            }
         }
     }
 
