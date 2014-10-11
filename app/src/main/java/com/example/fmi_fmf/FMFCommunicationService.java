@@ -231,7 +231,6 @@ public class FMFCommunicationService extends Service implements LocationListener
     }
 
     public ContactListAdapter getContactsAdapter() {
-        mContactsAdapter.reload();
         return mContactsAdapter;
     }
 
@@ -650,6 +649,16 @@ public class FMFCommunicationService extends Service implements LocationListener
         }
     }
 
+    private String generatePassword()
+    {
+        //generate a 4 digit integer 1000 <10000
+        int randomPIN = (int)(Math.random()*90000)+10000;
+        String genpass = "fmi"+String.valueOf(randomPIN);
+        //Store integer in a string
+        return genpass;
+
+    }
+
     private void fillInJabberIdAndStatus() {
         if(mConnection.isAuthenticated()) {
             Collection<RosterEntry> rosterEntries = mConnection.getRoster().getEntries();
@@ -844,16 +853,6 @@ public class FMFCommunicationService extends Service implements LocationListener
 //            if(mProvider != null)
 //                mLocationManager.requestLocationUpdates(mProvider, 0, 5, this);
 //        }
-    }
-
-    private String generatePassword()
-    {
-        //generate a 4 digit integer 1000 <10000
-        int randomPIN = (int)(Math.random()*90000)+10000;
-        String genpass = "fmi"+String.valueOf(randomPIN);
-        //Store integer in a string
-        return genpass;
-
     }
 
     /**

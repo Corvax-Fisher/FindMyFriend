@@ -8,6 +8,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -21,20 +22,15 @@ import java.util.List;
  */
 public class ContactListAdapter extends ArrayAdapter<FMFListEntry> {
 
-    private HashMap<String,Boolean> mStatusChanged;
     private HashMap<String,Integer> mRosterMap;
 
-    private boolean mReloadStatus;
     private int viewResource;
 
     public ContactListAdapter(Context context, int resource, int textViewResourceId, List<FMFListEntry> objects) {
         super(context, resource, textViewResourceId, objects);
 
         viewResource = resource;
-        mStatusChanged = new HashMap<String, Boolean>(objects.size());
         mRosterMap = new HashMap<String, Integer>(objects.size());
-        for(FMFListEntry listEntry : objects)
-            mStatusChanged.put(listEntry.jabberID,false);
 
         sort();
     }
@@ -43,84 +39,45 @@ public class ContactListAdapter extends ArrayAdapter<FMFListEntry> {
         super(context, resource, textViewResourceId);
 
         viewResource = resource;
-        mStatusChanged = new HashMap<String, Boolean>();
         mRosterMap = new HashMap<String, Integer>();
     }
 
-
-
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
-        //TODO: implement this
-
         if(convertView == null) {
             LayoutInflater inflater = (LayoutInflater)
                     getContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            convertView = inflater.inflate(viewResource,null);
-
-            ImageView statusView = (ImageView) convertView.findViewById(R.id.statusView);
-            TransitionDrawable statusTransition = (TransitionDrawable) statusView.getDrawable();
-
-            if(mStatusChanged.get(this.getItem(position).toString()) == true)
-            {
-                mStatusChanged.put(this.getItem(position).toString(), false);
-                if(this.getItem(position).status == FMFListEntry.ONLINE)
-                    statusTransition.startTransition(500);
-                else statusTransition.reverseTransition(500);
-            }
-        } else {
-            ImageView statusView = (ImageView) convertView.findViewById(R.id.statusView);
-            TransitionDrawable statusTransition = (TransitionDrawable) statusView.getDrawable();
-            if(mReloadStatus) {
-                statusTransition.resetTransition();
-                if(mStatusChanged.get(this.getItem(position).toString()) == false &&
-                        this.getItem(position).status == FMFListEntry.ONLINE)
-                    statusTransition.startTransition(0);
-                if (position == this.getCount() - 1)
-                    mReloadStatus = false;
-            }
-            if(mStatusChanged.get(this.getItem(position).toString()) == true)
-            {
-                mStatusChanged.put(this.getItem(position).toString(), false);
-                if(this.getItem(position).status == FMFListEntry.ONLINE)
-                    statusTransition.startTransition(500);
-                else statusTransition.reverseTransition(500);
-            }
+            convertView = inflater.inflate(viewResource, null);
         }
-        TextView nameView = (TextView) convertView.findViewById(R.id.nameView);
-        nameView.setText(this.getItem(position).toString());
+        ImageView statusView = (ImageView) convertView.findViewById(R.id.statusView);
+        if(this.getItem(position).status == FMFListEntry.ONLINE)
+            statusView.setImageResource(android.R.drawable.presence_online);
+        else statusView.setImageResource(android.R.drawable.presence_offline);
 
-        return convertView; //super.getView(position, convertView, parent);
+        return super.getView(position, convertView, parent);
     }
 
     @Override
     public void add(FMFListEntry object) {
         super.add(object);
-        mStatusChanged.put(object.toString(),false);
         sort();
-        mReloadStatus = true;
         notifyDataSetChanged();
     }
 
     @Override
     public void addAll(Collection<? extends FMFListEntry> collection) {
         super.addAll(collection);
-        for(FMFListEntry entry : collection) {
-            if( entry.status == FMFListEntry.ONLINE) mStatusChanged.put(entry.toString(),true);
-            else mStatusChanged.put(entry.toString(),false);
-        }
         sort();
-        mReloadStatus = true;
         notifyDataSetChanged();
     }
 
     public void setStatusByJabberId(String jabberId, boolean status) {
         if(mRosterMap.get(jabberId) != null)
         {
-            if(this.getItem(mRosterMap.get(jabberId)).status != status)
+            FMFListEntry adapterListEntry = this.getItem(mRosterMap.get(jabberId));
+            if(adapterListEntry.status != status)
             {
-                mStatusChanged.put(this.getItem(mRosterMap.get(jabberId)).toString(), true);
-                this.getItem(mRosterMap.get(jabberId)).status = status;
+                adapterListEntry.status = status;
                 notifyDataSetChanged();
             }
         }
@@ -135,8 +92,6 @@ public class ContactListAdapter extends ArrayAdapter<FMFListEntry> {
     public boolean contains(String jabberId) {
         return mRosterMap.containsKey(jabberId);
     }
-
-    public void reload() { mReloadStatus = true; }
 
     private void sort(){
         sort(new Comparator<FMFListEntry>() {
