@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Color;
+import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -132,7 +133,7 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
 //            Criteria criteria = new Criteria();
 
             // Getting the name of the best provider
-            String provider = LocationManager.PASSIVE_PROVIDER;// locationManager.getBestProvider(criteria, true);
+            String provider = locationManager.getBestProvider(new Criteria(), true);
 
             // Getting Current Location From GPS
             Location location = locationManager.getLastKnownLocation(provider);
@@ -141,7 +142,7 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
                 onLocationChanged(location);
             }
 
-            locationManager.requestLocationUpdates(provider, 0, 5, this);
+            locationManager.requestLocationUpdates(provider, 5000, 0, this);
         }
 
 //        Intent i = new Intent(this,FMFCommunicationService.class)
