@@ -25,8 +25,10 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
 import org.json.JSONObject;
@@ -52,7 +54,12 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
     private Marker myLocationMarker;
     private Marker friendLocationMarker;
 
+    private String mRequesterJabberId;
     public static boolean isActive = false;
+
+    private Polyline mRoutes[];
+    private int mRouteColors[] = {  Color.BLACK, Color.BLUE, Color.CYAN, Color.DKGRAY, Color.GRAY,
+                                    Color.GREEN, Color.LTGRAY, Color.MAGENTA, Color.RED, Color.WHITE };
 
     BroadcastReceiver br = new BroadcastReceiver() {
         @Override
@@ -70,6 +77,17 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
                             .draggable(false)
                             .title("Mein Freund"));
                     friendLocationMarker.showInfoWindow();
+                    if(myLocationMarker != null) {
+                        mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(
+                                new LatLngBounds.Builder()
+                                        .include(friendLocationMarker.getPosition())
+                                        .include(myLocationMarker.getPosition()).build()
+                                ,50)
+                        );
+                    } else {
+                        mMap.moveCamera(CameraUpdateFactory.newLatLng(friendLocationMarker.getPosition()));
+                        mMap.animateCamera(CameraUpdateFactory.zoomTo(15));
+                    }
                 }
                 else friendLocationMarker.setPosition(point);
 
@@ -94,19 +112,16 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
             }
         }
     };
-    private String mRequesterJabberId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
 
+        if(ContactListActivity.D) Log.d(MapsActivity.class.getSimpleName(), "onCreate");
         isActive = true;
 
         getActionBar().setDisplayHomeAsUpEnabled(true);
-
-        setUpMapIfNeeded();
-        if(ContactListActivity.D) Log.d(MapsActivity.class.getSimpleName(), "onCreate");
 
         // Getting Google Play availability status
         int status = GooglePlayServicesUtil.isGooglePlayServicesAvailable(getBaseContext());
@@ -120,22 +135,10 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
         }else { // Google Play Services are available
 
             // Initializing
-
-            // Getting reference to SupportMapFragment of the activity_main
-            SupportMapFragment fm = (SupportMapFragment)getSupportFragmentManager().findFragmentById(R.id.map);
-
-            // Getting Map for the SupportMapFragment
-            mMap = fm.getMap();
-
-            // Enable MyLocation Button in the Map
-//            mMap.setMyLocationEnabled(true);
-
+            setUpMapIfNeeded();
 
             // Getting LocationManager object from System Service LOCATION_SERVICE
             LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-
-            // Creating a criteria object to retrieve provider
-//            Criteria criteria = new Criteria();
 
             // Getting the name of the best provider
             String provider = locationManager.getBestProvider(new Criteria(), true);
@@ -148,12 +151,7 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
             }
 
             locationManager.requestLocationUpdates(provider, 5000, 0, this);
-        }
 
-        if(myLocationMarker != null)
-        {
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(myLocationMarker.getPosition()));
-            mMap.animateCamera(CameraUpdateFactory.zoomTo(12));
         }
 
 //        Intent i = new Intent(this,FMFCommunicationService.class)
@@ -245,7 +243,11 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
      * This should only be called once and when we are sure that {@link #mMap} is not null.
      */
     private void setUpMap() {
-        mMap.addMarker(new MarkerOptions().position(new LatLng(0, 0)).title("Marker"));
+        if(myLocationMarker != null)
+        {
+            mMap.moveCamera(CameraUpdateFactory.newLatLng(myLocationMarker.getPosition()));
+            mMap.animateCamera(CameraUpdateFactory.zoomTo(15));
+        }
     }
 
 
@@ -260,8 +262,14 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
         // Sensor enabled
         String sensor = "sensor=false";
 
+        // Mode walking
+        String mode = "mode=walking";
+
+        // Alternatives enabled
+        String alternatives = "alternatives=true";
+
         // Building the parameters to the web service
-        String parameters = str_origin+"&"+str_dest+"&"+sensor;
+        String parameters = str_origin+"&"+str_dest+"&"+sensor+"&"+mode+"&"+alternatives;
 
         // Output format
         String output = "json";
@@ -397,9 +405,14 @@ private class ParserTask extends AsyncTask<String, Integer, List<List<HashMap<St
     // Executes in UI thread, after the parsing process
     @Override
     protected void onPostExecute(List<List<HashMap<String, String>>> result) {
+        if(result == null) return;
         ArrayList<LatLng> points = null;
         PolylineOptions lineOptions = null;
 
+        if(mRoutes != null) {
+            for(Polyline route : mRoutes) route.remove();
+        }
+        mRoutes = new Polyline[result.size()];
         // Traversing through all the routes
         for (int i = 0; i < result.size(); i++) {
             points = new ArrayList<LatLng>();
@@ -421,13 +434,13 @@ private class ParserTask extends AsyncTask<String, Integer, List<List<HashMap<St
 
             // Adding all the points in the route to LineOptions
             lineOptions.addAll(points);
-            lineOptions.width(2);
-            lineOptions.color(Color.RED);
+            lineOptions.width(4);
+            lineOptions.color(mRouteColors[i % mRouteColors.length]);
 
+            // Drawing polyline in the Google Map for the i-th route
+            mRoutes[i] = mMap.addPolyline(lineOptions);
         }
 
-        // Drawing polyline in the Google Map for the i-th route
-        mMap.addPolyline(lineOptions);
     }
 
 }
@@ -444,8 +457,17 @@ private class ParserTask extends AsyncTask<String, Integer, List<List<HashMap<St
                     .draggable(false)
                     .title("Ich"));
             myLocationMarker.showInfoWindow();
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(point));
-            mMap.animateCamera(CameraUpdateFactory.zoomTo(12));
+            if(friendLocationMarker != null) {
+                mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(
+                                new LatLngBounds.Builder()
+                                        .include(friendLocationMarker.getPosition())
+                                        .include(myLocationMarker.getPosition()).build()
+                                ,50)
+                );
+            } else {
+                mMap.moveCamera(CameraUpdateFactory.newLatLng(myLocationMarker.getPosition()));
+                mMap.animateCamera(CameraUpdateFactory.zoomTo(15));
+            }
         }
         else myLocationMarker.setPosition(point);
 
