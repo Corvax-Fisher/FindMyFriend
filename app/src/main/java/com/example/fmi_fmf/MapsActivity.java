@@ -150,6 +150,12 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
             locationManager.requestLocationUpdates(provider, 5000, 0, this);
         }
 
+        if(myLocationMarker != null)
+        {
+            mMap.moveCamera(CameraUpdateFactory.newLatLng(myLocationMarker.getPosition()));
+            mMap.animateCamera(CameraUpdateFactory.zoomTo(12));
+        }
+
 //        Intent i = new Intent(this,FMFCommunicationService.class)
 //                .setAction(FMFCommunicationService.ACTION_CANCEL_NOTIFICATION)
 //                .putExtra(FMFCommunicationService.EXTRA_NOTIFICATION_ID, 1338);

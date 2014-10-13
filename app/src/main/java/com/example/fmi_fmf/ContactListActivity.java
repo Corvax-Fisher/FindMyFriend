@@ -66,7 +66,7 @@ public class ContactListActivity extends FragmentActivity
                 mRequesterJabberId = intent.getStringExtra(FMFCommunicationService.EXTRA_JABBER_ID);
                 String from = intent.getStringExtra(FMFCommunicationService.EXTRA_FULL_NAME);
                 PositionRequestDialogFragment.getInstance().setFullName(from);
-                if(!PositionRequestDialogFragment.getInstance().isVisible())
+                if(!PositionRequestDialogFragment.getInstance().isAdded())
                     PositionRequestDialogFragment.getInstance()
                             .show(getSupportFragmentManager(), "Position request");
             } else if(intent.getAction().equals(ACTION_SHOW_DECLINE_DIALOG)) {
@@ -104,17 +104,18 @@ public class ContactListActivity extends FragmentActivity
                 ncdf.show(getSupportFragmentManager(),"not connected");
             }
 //            FMFCommunicationService.N_INFO notificationInfo = mService.getNotificationInfo();
-            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             boolean notificationHandled = false;
             if(getIntent() != null)
             {
                 if(getIntent().getAction() != null) {
-                    if(getIntent().getAction().equals(ACTION_SHOW_REQUEST_DIALOG))
+                    if( getIntent().getAction().equals(ACTION_SHOW_REQUEST_DIALOG) &&
+                        mService.notificationExists(1337))
                     {
     //                    mNotificationTriggered = 1337;
                         handleNotification(1337);
                         notificationHandled = true;
-                    } else if(getIntent().getAction().equals(ACTION_OPEN_MAP)) {
+                    } else if(  getIntent().getAction().equals(ACTION_OPEN_MAP) &&
+                                mService.notificationExists(1338)) {
     //                    mNotificationTriggered = 1338;
                         handleNotification(1338);
                         notificationHandled = true;
@@ -124,19 +125,13 @@ public class ContactListActivity extends FragmentActivity
             if(!notificationHandled) {
                 if (mService.notificationExists(1337)) {
                     //Request Notification exists
-                    nm.cancel(1337);
-                    mService.cancelNotification(1337);
                     handleNotification(1337);
                 } else if (mService.notificationExists(1338)) {
                     //Accept Notification exists
-                    nm.cancel(1338);
-                    mService.cancelNotification(1338);
-                    nm.cancel(1337);
-                    mService.cancelNotification(1337);
                     handleNotification(1338);
                 } else if(mService.notificationExists(1339)) {
+                    NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
                     nm.cancel(1339);
-                    mService.cancelNotification(1339);
                     String from = mService.getFullName(1339);
                     AlertDialog requestDeclinedAlert = new AlertDialog.Builder(ContactListActivity.this)
                             .setTitle(R.string.title_request_declined)
@@ -307,6 +302,9 @@ public class ContactListActivity extends FragmentActivity
     }
 
     private void handleNotification(int notificationId){
+        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        nm.cancel(notificationId);
+        mService.cancelNotification(notificationId);
         if(notificationId == 1337){
             mRequesterJabberId = mService.getJabberId();
             PositionRequestDialogFragment.getInstance().setFullName(mService.getFullName(1337));
@@ -315,6 +313,7 @@ public class ContactListActivity extends FragmentActivity
         } else if(notificationId == 1338) {
             Intent i = new Intent(this,MapsActivity.class);
             if(mService.notificationExists(1337)){
+                nm.cancel(1337);
                 PositionRequestDialogFragment.getInstance().setFullName(mService.getFullName(1337));
                 i.setAction(MapsActivity.ACTION_SHOW_REQUEST_DIALOG)
                         .putExtra(FMFCommunicationService.EXTRA_JABBER_ID,mService.getJabberId());

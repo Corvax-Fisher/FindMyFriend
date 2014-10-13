@@ -36,12 +36,17 @@ import org.jivesoftware.smack.Chat;
 import org.jivesoftware.smack.ChatManager;
 import org.jivesoftware.smack.ChatManagerListener;
 import org.jivesoftware.smack.MessageListener;
+import org.jivesoftware.smack.PacketListener;
 import org.jivesoftware.smack.RosterEntry;
 import org.jivesoftware.smack.RosterListener;
 import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
+import org.jivesoftware.smack.filter.MessageTypeFilter;
+import org.jivesoftware.smack.filter.PacketFilter;
+import org.jivesoftware.smack.filter.PacketTypeFilter;
 import org.jivesoftware.smack.packet.Message;
+import org.jivesoftware.smack.packet.Packet;
 import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.json.JSONArray;
@@ -139,10 +144,9 @@ public class FMFCommunicationService extends Service implements LocationListener
                 criteria.setAccuracy(Criteria.ACCURACY_FINE);
                 // Getting the name of the best provider
                 String bestProvider = mLocationManager.getBestProvider(criteria, true);
-                if(bestProvider == null && mProvider != null) {
-                    mLocationManager.removeUpdates(FMFCommunicationService.this);
-                } else if(!mProvider.equals(bestProvider)) {
-                    mLocationManager.removeUpdates(FMFCommunicationService.this);
+                if(mProvider != null) {
+                    if (!mProvider.equals(bestProvider))
+                        mLocationManager.removeUpdates(FMFCommunicationService.this);
                 }
                 mProvider = bestProvider;
                 sendCurrentPresence();
@@ -636,12 +640,12 @@ public class FMFCommunicationService extends Service implements LocationListener
 
     private void sendCurrentPresence() {
         if(mConnection.isAuthenticated() && mConnection.isConnected()) {
-            if(ContactListActivity.D) Log.d(LOG_TAG,"sending current presence");
             Presence p = new Presence(Presence.Type.available);
             p.setPriority(100);
             if(isProviderAvailable()) p.setStatus("Available");
             else p.setStatus("Not available");
             try {
+                if(ContactListActivity.D) Log.d(LOG_TAG,"sending current presence: " + p.getStatus());
                 mConnection.sendPacket(p);
             } catch (SmackException.NotConnectedException e) {
                 e.printStackTrace();
@@ -817,11 +821,12 @@ public class FMFCommunicationService extends Service implements LocationListener
                 "onStatusChanged: Provider: "+ provider + " status: " + status);
 
         Presence p = new Presence(Presence.Type.available);
-        if(status == LocationProvider.AVAILABLE) p.setStatus("Available");
-        else p.setStatus("Not available");
+        if(status == LocationProvider.OUT_OF_SERVICE) p.setStatus("Not available");
+        else p.setStatus("Available");
 
         if(mConnection.isAuthenticated() && mConnection.isConnected()) {
             try {
+                if(ContactListActivity.D) Log.d(LOG_TAG,"sending presence: " + p.getStatus());
                 mConnection.sendPacket(p);
             } catch (SmackException.NotConnectedException e) {
                 e.printStackTrace();
@@ -1015,11 +1020,14 @@ public class FMFCommunicationService extends Service implements LocationListener
             mLoadContactsTaskIsRunning = false;
 
             // Add a packet listener to get messages sent to us
-//            PacketFilter filter = new MessageTypeFilter(Message.Type.chat);
-//            mConnection.addPacketListener(new PacketListener() {
-//                @Override
-//                public void processPacket(Packet packet) {
-//                    Message message = (Message) packet;
+            PacketFilter filter = new PacketTypeFilter(Presence.class);
+            mConnection.addPacketListener(new PacketListener() {
+                @Override
+                public void processPacket(Packet packet) {
+                    Presence p = (Presence) packet;
+                    if (ContactListActivity.D) Log.d(LOG_TAG, "received presence: " + p.toString());
+                }
+            },filter);
 //                    if (message.getBody() != null) {
 //                        if (message.getBody().equals("P")) {
 //                            //Position request

@@ -23,7 +23,7 @@ dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     compile files('libs/org.xbill.dns_2.1.6.jar')
     compile files('libs/asmack-android-8-4.0.3.jar')
-    compile 'com.google.android.gms:play-services:5.2.08'
+    compile 'com.google.android.gms:play-services:6.1.11'
     compile 'com.android.support:appcompat-v7:20.0.0'
     compile files('libs/json-lib-2.4-jdk15.jar')
 }
