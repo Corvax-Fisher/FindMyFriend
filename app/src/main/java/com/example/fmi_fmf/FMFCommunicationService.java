@@ -957,8 +957,8 @@ public class FMFCommunicationService extends Service implements LocationListener
                 FMFListEntry listEntry = new FMFListEntry(contactDataSplit[0],contactDataSplit[1]);
 
 //                mContactsAdapter.add(new FMFListEntry(contactDataSplit[0],contactDataSplit[1]));
-                RosterEntry roster = mConnection.getRoster().getEntry(contactDataSplit[0]);
-                if(roster == null){
+//                RosterEntry roster = mConnection.getRoster().getEntry(contactDataSplit[0]);
+//                if(roster == null){
                     try {
                         mConnection.getRoster().createEntry(contactDataSplit[0],contactDataSplit[1],null);
                     } catch (SmackException.NotLoggedInException e) {
@@ -970,7 +970,7 @@ public class FMFCommunicationService extends Service implements LocationListener
                     } catch (SmackException.NotConnectedException e) {
                         e.printStackTrace();
                     }
-                }
+//                }
                 Presence p = mConnection.getRoster().getPresence(listEntry.jabberID);
                 if(ContactListActivity.D) Log.d(LOG_TAG,
                         "Presence from: " + p.getFrom() + " type: " + p.getType() + " status: " +p.getStatus() );
@@ -1020,14 +1020,14 @@ public class FMFCommunicationService extends Service implements LocationListener
             mLoadContactsTaskIsRunning = false;
 
             // Add a packet listener to get messages sent to us
-            PacketFilter filter = new PacketTypeFilter(Presence.class);
-            mConnection.addPacketListener(new PacketListener() {
-                @Override
-                public void processPacket(Packet packet) {
-                    Presence p = (Presence) packet;
-                    if (ContactListActivity.D) Log.d(LOG_TAG, "received presence: " + p.toString());
-                }
-            },filter);
+//            PacketFilter filter = new PacketTypeFilter(Presence.class);
+//            mConnection.addPacketListener(new PacketListener() {
+//                @Override
+//                public void processPacket(Packet packet) {
+//                    Presence p = (Presence) packet;
+//                    if (ContactListActivity.D) Log.d(LOG_TAG, "received presence: " + p.toString());
+//                }
+//            },filter);
 //                    if (message.getBody() != null) {
 //                        if (message.getBody().equals("P")) {
 //                            //Position request

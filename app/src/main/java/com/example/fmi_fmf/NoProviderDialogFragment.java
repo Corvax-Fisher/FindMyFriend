@@ -36,6 +36,7 @@ public class NoProviderDialogFragment extends DialogFragment {
                 })
                 .setNegativeButton(R.string.decline, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
+                        getActivity().finish();
                    }
                 });
         // Create the AlertDialog object and return it
