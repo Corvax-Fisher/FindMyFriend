@@ -9,21 +9,33 @@
 
     <string name="action_refresh">Aktualisieren</string>
     <string name="action_new">Einladen</string>
+    <string name="action_delete">Acc. löschen</string>
+
+    <string name="action_alternatives">Alternativrouten</string>
 
     <string name="accept">Ja</string>
     <string name="decline">Nein</string>
     <string name="ok">OK</string>
 
-    <string name="title_no_provider_enabled">Standort nicht verfügbar</string>
-    <string name="message_no_provider_enabled">Diese App benötigt deinen Standort.\nMöchtest du ihn jetzt freigeben?\n(Standort-Menü öffnet sich)</string>
+    <string name="title_no_provider_enabled">Standort freigeben?</string>
+    <string name="message_no_provider_enabled">Diese App benötigt deinen Standort. Möchtest du ihn jetzt freigeben? (Standort-Menü öffnet sich)</string>
 
-    <string name="title_not_connected_dialog">Keine Internetverbindung</string>
-    <string name="message_not_connected_dialog">Du hast keine Verbindung zum Internet.\nMöchtest du jetzt die Netzwerkeinstellungen öffnen?</string>
+    <string name="title_not_connected_dialog">Netzwerkeinstellungen öffnen?</string>
+    <string name="message_not_connected_dialog">Du hast keine Verbindung zum Internet. Möchtest du jetzt die Netzwerkeinstellungen öffnen?</string>
 
-    <string name="title_not_connected">Keine Verbindung</string>
-    <string name="message_not_connected">Du bist nicht verbunden.\nAnfrage kann nicht gesendet werden.</string>
+    <!--<string name="title_not_connected">Keine Verbindung</string>-->
+    <string name="message_not_connected">Keine Verbindung zum Server. Anfrage kann nicht gesendet werden.</string>
+
+    <!--<string name="title_locations_loading">Positionen werden geladen...</string>-->
+    <string name="message_locations_loading">Die Positionen werden geladen. Einen Moment bitte...</string>
+
+    <string name="title_position_request">Positionsanfrage</string>
+    <string name="message_position_request">&#160;möchte zu dir navigieren. Möchtest du die Anfrage akzeptieren?</string>
+
+    <string name="title_request_accepted">Anfrage angenommen</string>
 
     <string name="title_request_declined">Anfrage abgelehnt</string>
+    <string name="message_request_declined">&#160;hat deine Anfrage abgelehnt.</string>
 
     <string name="message_contact_list">Tippen Sie auf einen Ihrer Freunde in der Kontaktliste, um ihm eine Anfrage zu schicken. Sobald Ihr Freund die Anfrage akzeptiert, können Sie zu ihm navigieren.\n\nNoch keine Freunde? Laden Sie Freunde ein, indem Sie oben auf das "+" Zeichen klicken.</string>
 
@@ -36,4 +48,7 @@
 
     <string name="message_registration_succeeded">Die Registrierung war erfolgreich.</string>
     <string name="message_registration_failed">Bei der Registrierung ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.</string>
+
+    <string name="title_delete_account">Account löschen?</string>
+    <string name="message_delete_account">Wollen Sie Ihren Account wirklich löschen? (Sie sollten dies sogar tun, bevor Sie die App löschen.)</string>
 </resources>

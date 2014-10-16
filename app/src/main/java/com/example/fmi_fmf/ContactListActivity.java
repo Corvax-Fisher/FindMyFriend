@@ -36,8 +36,9 @@ public class ContactListActivity extends FragmentActivity
     public static final String ACTION_SHOW_DECLINE_DIALOG = "show decline dialog";
     public static final String ACTION_SHOW_DISCONNECTED_DIALOG = "show disconnected dialog";
     public static final String ACTION_OPEN_MAP = "open map";
+    public static final String ACTION_CLOSE = "close";
 
-//    public static final String EXTRA_FULL_NAME = "full name";
+    //    public static final String EXTRA_FULL_NAME = "full name";
 //    public static final String EXTRA_PHONE_NUMBER = "phone number";
 //
     public static boolean isActive = false;
@@ -62,6 +63,8 @@ public class ContactListActivity extends FragmentActivity
 
 //    ArrayList<HashMap<String, String>> registeredList;
 
+    private boolean mIsInteractive = true;
+
     public CheckBox dontShowAgain;
 
     private BroadcastReceiver br = new BroadcastReceiver() {
@@ -79,13 +82,19 @@ public class ContactListActivity extends FragmentActivity
             } else if(intent.getAction().equals(ACTION_SHOW_DECLINE_DIALOG)) {
                 String from = intent.getStringExtra(FMFCommunicationService.EXTRA_FULL_NAME);
                 AlertDialog requestDeclinedAlert = new AlertDialog.Builder(ContactListActivity.this)
-                        .setTitle(R.string.title_request_declined)
-                        .setMessage(from + " hat deine Anfrage abgelehnt")
+//                        .setTitle(R.string.title_request_declined)
+                        .setMessage(from + getText(R.string.message_request_declined))
                         .create();
                 requestDeclinedAlert.show();
             } else if(intent.getAction().equals(ACTION_SHOW_DISCONNECTED_DIALOG)) {
                 NotConnectedDialogFragment ncdf = new NotConnectedDialogFragment();
                 ncdf.show(getSupportFragmentManager(),"not connected");
+            } else if(intent.getAction().equals(ACTION_CLOSE)) finish();
+            else if(intent.getAction().equals(Intent.ACTION_SCREEN_ON)) {
+                mIsInteractive = true;
+                if(mService.notificationExists(1338)) handleNotification(1338);
+            } else if(intent.getAction().equals(Intent.ACTION_SCREEN_OFF)) {
+                mIsInteractive = false;
             }
 
         }
@@ -107,7 +116,7 @@ public class ContactListActivity extends FragmentActivity
                 if(mNoProviderDialog == null) mNoProviderDialog = new NoProviderDialogFragment();
                 if(!mNoProviderDialog.isAdded()) mNoProviderDialog.show(getSupportFragmentManager(), "No Provider Dialog");
             }
-            if(!mService.isConnected()) {
+            if(!mService.isAnyNetworkActive()) {
                 NotConnectedDialogFragment ncdf = new NotConnectedDialogFragment();
                 ncdf.show(getSupportFragmentManager(),"not connected");
             }
@@ -134,7 +143,7 @@ public class ContactListActivity extends FragmentActivity
                 if (mService.notificationExists(1337)) {
                     //Request Notification exists
                     handleNotification(1337);
-                } else if (mService.notificationExists(1338)) {
+                } else if (mService.notificationExists(1338) && mIsInteractive) {
                     //Accept Notification exists
                     handleNotification(1338);
                 } else if(mService.notificationExists(1339)) {
@@ -142,8 +151,8 @@ public class ContactListActivity extends FragmentActivity
                     nm.cancel(1339);
                     String from = mService.getFullName(1339);
                     AlertDialog requestDeclinedAlert = new AlertDialog.Builder(ContactListActivity.this)
-                            .setTitle(R.string.title_request_declined)
-                            .setMessage(from + " hat deine Anfrage abgelehnt")
+//                            .setTitle(R.string.title_request_declined)
+                            .setMessage(from + getText(R.string.message_request_declined))
                             .create();
                     requestDeclinedAlert.show();
                 }
@@ -207,18 +216,20 @@ public class ContactListActivity extends FragmentActivity
         switch (item.getItemId()) {
             case R.id.action_new:
                 try
-                { Intent i = new Intent(Intent.ACTION_SEND);
+                {
+                    Intent i = new Intent(Intent.ACTION_SEND);
                     i.setType("text/plain");
                     String sAux = "Follow My Friend ist eine Android-App, mit der Du meine Position herausfinden und mir folgen kannst. Lade Dir gleich die App aus dem Store und probier's aus:\n";
                     sAux = sAux + "(Link zu Google Play Store, noch nicht öffentlich.) \n";
                     i.putExtra(Intent.EXTRA_TEXT, sAux);
                     startActivity(Intent.createChooser(i, "Freund einladen..."));
-                }
-                catch(Exception e)
-                { //e.toString();
+                } catch(Exception e) {
+                    //e.toString();
                     Toast.makeText(getBaseContext(),"Ups, das hat leider nicht funktioniert. Probiere es später erneut.",Toast.LENGTH_SHORT).show();
                 }
-
+                return true;
+            case R.id.action_delete:
+                new DeleteAccountDialogFragment().show(getSupportFragmentManager(),"delete");
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
@@ -268,13 +279,12 @@ public class ContactListActivity extends FragmentActivity
     protected void onResume() {
         super.onResume();
         if (D) Log.d(LOG_TAG, "onResume");
-        LocalBroadcastManager.getInstance(this).registerReceiver(br,
-                new IntentFilter(ACTION_SHOW_REQUEST_DIALOG));
-        LocalBroadcastManager.getInstance(this).registerReceiver(br,
-                new IntentFilter(ACTION_SHOW_DECLINE_DIALOG));
-        LocalBroadcastManager.getInstance(this).registerReceiver(br,
-                new IntentFilter(ACTION_SHOW_DISCONNECTED_DIALOG));
-
+        IntentFilter broadcastFilter = new IntentFilter(ACTION_SHOW_REQUEST_DIALOG);
+        broadcastFilter.addAction(ACTION_SHOW_DECLINE_DIALOG);
+        broadcastFilter.addAction(ACTION_SHOW_DISCONNECTED_DIALOG);
+        broadcastFilter.addAction(Intent.ACTION_SCREEN_ON);
+        broadcastFilter.addAction(Intent.ACTION_SCREEN_OFF);
+        LocalBroadcastManager.getInstance(this).registerReceiver(br,broadcastFilter);
 
         AlertDialog.Builder adb = new AlertDialog.Builder(this);
 
@@ -329,7 +339,7 @@ public class ContactListActivity extends FragmentActivity
                 mNoProviderDialog.show(getSupportFragmentManager(), "No Provider Dialog");
             } else if(ret == FMFCommunicationService.RET_CODE.NOT_CONNECTED) {
                 AlertDialog notConnectedAlert = new AlertDialog.Builder(this)
-                        .setTitle(R.string.title_not_connected)
+//                        .setTitle(R.string.title_not_connected)
                         .setMessage(R.string.message_not_connected)
                         .create();
                 notConnectedAlert.show();
@@ -349,6 +359,7 @@ public class ContactListActivity extends FragmentActivity
             if(!PositionRequestDialogFragment.getInstance().isAdded())
                 PositionRequestDialogFragment.getInstance().show(getSupportFragmentManager(),"Position request");
         } else if(notificationId == 1338) {
+            mService.sendMapPresenceUpdate();
             Intent i = new Intent(this,MapsActivity.class);
             if(mService.notificationExists(1337)){
                 nm.cancel(1337);

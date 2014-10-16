@@ -1,6 +1,7 @@
 package com.example.fmi_fmf;
 
 import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -16,6 +17,7 @@ import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.NavUtils;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
+import android.view.Menu;
 import android.view.MenuItem;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -24,6 +26,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
@@ -51,15 +54,18 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
 
     private GoogleMap mMap; // Might be null if Google Play services APK is not available.
 
-    private Marker myLocationMarker;
-    private Marker friendLocationMarker;
+    private Marker mMyLocationMarker;
+    private Marker mFriendLocationMarker;
+
+    private final int MY_MARKER = 1;
+    private final int MY_FRIENDS_MARKER = 2;
 
     private String mRequesterJabberId;
     public static boolean isActive = false;
 
     private Polyline mRoutes[];
-    private int mRouteColors[] = {  Color.BLACK, Color.BLUE, Color.CYAN, Color.DKGRAY, Color.GRAY,
-                                    Color.GREEN, Color.LTGRAY, Color.MAGENTA, Color.RED, Color.WHITE };
+    private int mRouteColors[] = { Color.BLACK, Color.GRAY, Color.LTGRAY };
+    private ProgressDialog mLocationLoadingDialog;
 
     BroadcastReceiver br = new BroadcastReceiver() {
         @Override
@@ -69,39 +75,8 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
                 double locationExtra[] = intent.getDoubleArrayExtra(
                         FMFCommunicationService.EXTRA_FRIEND_LOCATION );
                 LatLng point = new LatLng(locationExtra[0], locationExtra[1]);
-                if(friendLocationMarker == null)
-                {
-                    friendLocationMarker = mMap.addMarker(new MarkerOptions()
-                            .position(point)
-                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
-                            .draggable(false)
-                            .title("Mein Freund"));
-                    friendLocationMarker.showInfoWindow();
-                    if(myLocationMarker != null) {
-                        mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(
-                                new LatLngBounds.Builder()
-                                        .include(friendLocationMarker.getPosition())
-                                        .include(myLocationMarker.getPosition()).build()
-                                ,50)
-                        );
-                    } else {
-                        mMap.moveCamera(CameraUpdateFactory.newLatLng(friendLocationMarker.getPosition()));
-                        mMap.animateCamera(CameraUpdateFactory.zoomTo(15));
-                    }
-                }
-                else friendLocationMarker.setPosition(point);
 
-                if(myLocationMarker != null)
-                {
-                    // Getting URL to the Google Directions API
-                    String url = getDirectionsUrl(myLocationMarker.getPosition(),
-                            friendLocationMarker.getPosition());
-
-                    DownloadTask downloadTask = new DownloadTask();
-
-                    // Start downloading json data from Google Directions API
-                    downloadTask.execute(url);
-                }
+                processLocationUpdate(MY_FRIENDS_MARKER, point);
             } else if(intent.getAction().equals(ACTION_SHOW_REQUEST_DIALOG)) {
                 mRequesterJabberId = intent.getStringExtra(FMFCommunicationService.EXTRA_JABBER_ID);
                 String from = intent.getStringExtra(FMFCommunicationService.EXTRA_FULL_NAME);
@@ -173,14 +148,28 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
     }
 
     @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_map, menu);
+        return true;
+    }
+
+    @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             // Respond to the action bar's Up/Home button
             case android.R.id.home:
                 NavUtils.navigateUpFromSameTask(this);
                 return true;
+            case R.id.action_alternatives:
+                toggleVisibilityForAlternatives();
+                return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void toggleVisibilityForAlternatives() {
+        for(int i=1;i < mRoutes.length;i++) mRoutes[i].setVisible(!mRoutes[i].isVisible());
     }
 
     @Override
@@ -202,9 +191,14 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
     @Override
     protected void onStop() {
         super.onStop();
+        LocationManager lm = (LocationManager) getSystemService(LOCATION_SERVICE);
+        lm.removeUpdates(this);
         startService(new Intent(this,FMFCommunicationService.class)
                 .setAction(FMFCommunicationService.ACTION_SEND_STOP));
         isActive = false;
+        if(mLocationLoadingDialog != null) {
+            if(mLocationLoadingDialog.isShowing()) mLocationLoadingDialog.dismiss();
+        }
         finish();
     }
 
@@ -243,13 +237,88 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
      * This should only be called once and when we are sure that {@link #mMap} is not null.
      */
     private void setUpMap() {
-        if(myLocationMarker != null)
+        if(mMyLocationMarker != null)
         {
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(myLocationMarker.getPosition()));
+            mMap.moveCamera(CameraUpdateFactory.newLatLng(mMyLocationMarker.getPosition()));
             mMap.animateCamera(CameraUpdateFactory.zoomTo(15));
+        }
+        if(mMyLocationMarker == null || mFriendLocationMarker == null) {
+            mLocationLoadingDialog = new ProgressDialog(this);
+//            mLocationLoadingDialog.setTitle(R.string.title_locations_loading);
+            mLocationLoadingDialog.setMessage(getText(R.string.message_locations_loading));
+            mLocationLoadingDialog.setIndeterminate(true);
+            mLocationLoadingDialog.setCancelable(true);
+            mLocationLoadingDialog.show();
         }
     }
 
+    private void processLocationUpdate(int markerId, LatLng point) {
+        Marker marker, theOtherMarker;
+        String markerTitle;
+        float hue;
+        if(markerId == MY_MARKER) {
+            markerTitle = "Ich";
+            hue = BitmapDescriptorFactory.HUE_RED;
+            marker = mMyLocationMarker;
+            theOtherMarker = mFriendLocationMarker;
+        }
+        else {
+            markerTitle = "Mein Freund";
+            hue = BitmapDescriptorFactory.HUE_GREEN;
+            marker = mFriendLocationMarker;
+            theOtherMarker = mMyLocationMarker;
+        }
+        if(marker == null)
+        {
+            marker = mMap.addMarker(new MarkerOptions()
+                    .position(point)
+                    .icon(BitmapDescriptorFactory.defaultMarker(hue))
+                    .draggable(false)
+                    .title(markerTitle));
+
+            if(markerId == MY_MARKER) {
+                marker.showInfoWindow();
+                mMyLocationMarker = marker;
+            }
+            else mFriendLocationMarker = marker;
+            if(theOtherMarker != null) {
+                mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(
+                                new LatLngBounds.Builder()
+                                        .include(marker.getPosition())
+                                        .include(theOtherMarker.getPosition())
+                                        .build()
+                                ,100)
+                );
+            } else {
+                mMap.moveCamera(CameraUpdateFactory.newLatLng(marker.getPosition()));
+                mMap.animateCamera(CameraUpdateFactory.zoomTo(15));
+            }
+        }
+        else marker.setPosition(point);
+
+        if(theOtherMarker != null)
+        {
+            mLocationLoadingDialog.dismiss();
+
+            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(
+                        new CameraPosition.Builder(mMap.getCameraPosition())
+                                .bearing((float)(180/Math.PI*Math.atan2(
+                                        mFriendLocationMarker.getPosition().longitude-
+                                        mMyLocationMarker.getPosition().longitude,
+                                        mFriendLocationMarker.getPosition().latitude-
+                                        mMyLocationMarker.getPosition().latitude)))
+                                .build())
+            );
+            // Getting URL to the Google Directions API
+            String url = getDirectionsUrl(theOtherMarker.getPosition(),
+                    marker.getPosition());
+
+            DownloadTask downloadTask = new DownloadTask();
+
+            // Start downloading json data from Google Directions API
+            downloadTask.execute(url);
+        }
+    }
 
     private String getDirectionsUrl(LatLng origin,LatLng dest){
 
@@ -268,8 +337,11 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
         // Alternatives enabled
         String alternatives = "alternatives=true";
 
+        // Metric units
+//        String units = "units=metric";
+
         // Building the parameters to the web service
-        String parameters = str_origin+"&"+str_dest+"&"+sensor+"&"+mode+"&"+alternatives;
+        String parameters = str_origin+"&"+str_dest+"&"+sensor+"&"+mode+"&"+alternatives+"&";//+units;
 
         // Output format
         String output = "json";
@@ -408,13 +480,18 @@ private class ParserTask extends AsyncTask<String, Integer, List<List<HashMap<St
         if(result == null) return;
         ArrayList<LatLng> points = null;
         PolylineOptions lineOptions = null;
+        int numRoutes;
+        boolean showAlternatives = false;
 
         if(mRoutes != null) {
+            if(mRoutes.length >1) showAlternatives = mRoutes[1].isVisible();
             for(Polyline route : mRoutes) route.remove();
         }
-        mRoutes = new Polyline[result.size()];
+        if(result.size() > 3) numRoutes = 3;
+        else numRoutes = result.size();
+        mRoutes = new Polyline[numRoutes];
         // Traversing through all the routes
-        for (int i = 0; i < result.size(); i++) {
+        for (int i = 0; i < numRoutes; i++) {
             points = new ArrayList<LatLng>();
             lineOptions = new PolylineOptions();
 
@@ -436,6 +513,7 @@ private class ParserTask extends AsyncTask<String, Integer, List<List<HashMap<St
             lineOptions.addAll(points);
             lineOptions.width(4);
             lineOptions.color(mRouteColors[i % mRouteColors.length]);
+            if(i>0) lineOptions.visible(showAlternatives);
 
             // Drawing polyline in the Google Map for the i-th route
             mRoutes[i] = mMap.addPolyline(lineOptions);
@@ -449,40 +527,7 @@ private class ParserTask extends AsyncTask<String, Integer, List<List<HashMap<St
     public void onLocationChanged(Location location) {
 
         LatLng point = new LatLng(location.getLatitude(), location.getLongitude());
-        if(myLocationMarker == null)
-        {
-            myLocationMarker = mMap.addMarker(new MarkerOptions()
-                    .position(point)
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
-                    .draggable(false)
-                    .title("Ich"));
-            myLocationMarker.showInfoWindow();
-            if(friendLocationMarker != null) {
-                mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(
-                                new LatLngBounds.Builder()
-                                        .include(friendLocationMarker.getPosition())
-                                        .include(myLocationMarker.getPosition()).build()
-                                ,50)
-                );
-            } else {
-                mMap.moveCamera(CameraUpdateFactory.newLatLng(myLocationMarker.getPosition()));
-                mMap.animateCamera(CameraUpdateFactory.zoomTo(15));
-            }
-        }
-        else myLocationMarker.setPosition(point);
-
-
-        if(friendLocationMarker != null)
-        {
-            // Getting URL to the Google Directions API
-            String url = getDirectionsUrl(myLocationMarker.getPosition(),
-                    friendLocationMarker.getPosition());
-
-            DownloadTask downloadTask = new DownloadTask();
-
-            // Start downloading json data from Google Directions API
-            downloadTask.execute(url);
-        }
+        processLocationUpdate(MY_MARKER,point);
     }
 
     @Override

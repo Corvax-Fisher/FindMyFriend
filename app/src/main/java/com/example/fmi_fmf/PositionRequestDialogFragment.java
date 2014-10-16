@@ -13,10 +13,6 @@ import android.util.Log;
  */
 public class PositionRequestDialogFragment extends DialogFragment {
 
-//    public static final int ID_ACCEPT = 0;
-//    public static final int ID_ACCEPT_AND_REQUEST = 1;
-//    public static final int ID_DECLINE = 2;
-
     private static PositionRequestDialogFragment instance = null;
 
     public static PositionRequestDialogFragment getInstance() {
@@ -70,10 +66,8 @@ public class PositionRequestDialogFragment extends DialogFragment {
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         // Use the Builder class for convenient dialog construction
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-        builder.setTitle("Positionsanfrage")
-                .setIcon(R.drawable.ic_launcher)
-                .setMessage(mFullName + " möchte zu dir navigieren. Möchtest du die Anfrage akzeptieren?")
-        //TODO (Martin): change this to a Yes/No dialog
+        builder.setIcon(R.drawable.ic_launcher)
+                .setMessage(mFullName + getText(R.string.message_position_request))
                 .setPositiveButton(R.string.accept, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
                         if(mListener != null) mListener.onDialogPositiveClick();
