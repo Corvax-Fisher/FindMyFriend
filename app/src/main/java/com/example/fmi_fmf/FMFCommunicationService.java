@@ -973,8 +973,8 @@ public class FMFCommunicationService extends Service implements LocationListener
 
                     //ownNumber
                     SharedPreferences sharedPref = getSharedPreferences("FMFNumbers",Context.MODE_PRIVATE);
-                    String myNumber = sharedPref.getString(USERNAME,"");
-                    myNumber = jabberIdToPhoneNumber(myNumber);
+                    String myNumber = sharedPref.getString(USERNAME,"").substring(4);
+//                    myNumber = jabberIdToPhoneNumber(myNumber);
 
                     // looping through All Products
                     for (int i = 0; i < contacts.length(); i++) {
@@ -1022,8 +1022,8 @@ public class FMFCommunicationService extends Service implements LocationListener
                 FMFListEntry listEntry = new FMFListEntry(contactDataSplit[0],contactDataSplit[1]);
 
 //                mContactsAdapter.add(new FMFListEntry(contactDataSplit[0],contactDataSplit[1]));
-                RosterEntry roster = mConnection.getRoster().getEntry(contactDataSplit[0]);
-                if(roster == null){
+//                RosterEntry roster = mConnection.getRoster().getEntry(contactDataSplit[0]);
+//                if(roster == null){
                     try {
                         mConnection.getRoster().createEntry(contactDataSplit[0],contactDataSplit[1],null);
                     } catch (SmackException.NotLoggedInException e) {
@@ -1035,18 +1035,18 @@ public class FMFCommunicationService extends Service implements LocationListener
                     } catch (SmackException.NotConnectedException e) {
                         e.printStackTrace();
                     }
-                } else if (roster.getName() == null)
-                    try {
-                        roster.setName(contactDataSplit[1]);
-                    } catch (SmackException.NotConnectedException e) {
-                        e.printStackTrace();
-                    }
-                else if(roster.getName().isEmpty())
-                    try {
-                        roster.setName(contactDataSplit[1]);
-                    } catch (SmackException.NotConnectedException e) {
-                        e.printStackTrace();
-                    }
+//                } else if (roster.getName() == null)
+//                    try {
+//                        roster.setName(contactDataSplit[1]);
+//                    } catch (SmackException.NotConnectedException e) {
+//                        e.printStackTrace();
+//                    }
+//                else if(roster.getName().isEmpty())
+//                    try {
+//                        roster.setName(contactDataSplit[1]);
+//                    } catch (SmackException.NotConnectedException e) {
+//                        e.printStackTrace();
+//                    }
                 Presence p = mConnection.getRoster().getPresence(listEntry.jabberID);
                 if(ContactListActivity.D) Log.d(LOG_TAG,
                         "Presence from: " + p.getFrom() + " " + p );
@@ -1236,6 +1236,7 @@ public class FMFCommunicationService extends Service implements LocationListener
         if(ContactListActivity.D) Log.d(LOG_TAG,"received presence update: "+ presence);
         boolean updatePresence = false;
         if(presence.getType().equals(Presence.Type.unavailable)) updatePresence = true;
+
         boolean presenceUpdate = FMFListEntry.OFFLINE;
         if(presence.getStatus() != null)
         {

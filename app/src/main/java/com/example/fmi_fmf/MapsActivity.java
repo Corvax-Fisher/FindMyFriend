@@ -169,7 +169,8 @@ public class MapsActivity extends FragmentActivity implements LocationListener,
     }
 
     private void toggleVisibilityForAlternatives() {
-        for(int i=1;i < mRoutes.length;i++) mRoutes[i].setVisible(!mRoutes[i].isVisible());
+        if(mRoutes != null)
+            for(int i=1;i < mRoutes.length;i++) mRoutes[i].setVisible(!mRoutes[i].isVisible());
     }
 
     @Override
