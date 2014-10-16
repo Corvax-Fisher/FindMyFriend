@@ -12,6 +12,7 @@
 
     <string name="accept">Ja</string>
     <string name="decline">Nein</string>
+    <string name="ok">OK</string>
 
     <string name="title_no_provider_enabled">Standort nicht verfügbar</string>
     <string name="message_no_provider_enabled">Diese App benötigt deinen Standort.\nMöchtest du ihn jetzt freigeben?\n(Standort-Menü öffnet sich)</string>
@@ -24,6 +25,8 @@
 
     <string name="title_request_declined">Anfrage abgelehnt</string>
 
+    <string name="message_contact_list">Tippen Sie auf einen Ihrer Freunde in der Kontaktliste, um ihm eine Anfrage zu schicken. Sobald Ihr Freund die Anfrage akzeptiert, können Sie zu ihm navigieren.\n\nNoch keine Freunde? Laden Sie Freunde ein, indem Sie oben auf das "+" Zeichen klicken.</string>
+
     <string name="title_activity_registration">Registrierung</string>
     <string name="edit_number">00491234567890</string>
     <string name="button_weiter">Weiter</string>
@@ -33,6 +36,4 @@
 
     <string name="message_registration_succeeded">Die Registrierung war erfolgreich.</string>
     <string name="message_registration_failed">Bei der Registrierung ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.</string>
-
-    <string name="noFriendsText">Laden Sie mehr Freunde ein, indem Sie oben auf das "+" Zeichen klicken.</string>
 </resources>

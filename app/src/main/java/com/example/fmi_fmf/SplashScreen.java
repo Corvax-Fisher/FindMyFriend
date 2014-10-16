@@ -7,6 +7,7 @@ import android.os.Handler;
 
 /**
  * Created by Farah on 08.10.2014.
+ * Splash Screen of Follow My Friends, used to just load the font before starting the application.
  */
 public class SplashScreen extends Activity {
 
@@ -16,6 +17,7 @@ public class SplashScreen extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        FontsOverride.setDefaultFont(this, "DEFAULT", "Roboto-Regular.ttf");
         FontsOverride.setDefaultFont(this, "MONOSPACE", "Roboto-Regular.ttf");
         setContentView(R.layout.activity_splash);
 

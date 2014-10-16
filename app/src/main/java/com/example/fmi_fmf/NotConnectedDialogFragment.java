@@ -27,6 +27,7 @@ public class NotConnectedDialogFragment extends DialogFragment {
         // Use the Builder class for convenient dialog construction
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
         builder.setTitle(R.string.title_not_connected_dialog)
+                .setIcon(R.drawable.ic_launcher)
                 .setMessage(R.string.message_not_connected_dialog)
                 .setCancelable(false)
                 .setPositiveButton(R.string.accept, new DialogInterface.OnClickListener() {

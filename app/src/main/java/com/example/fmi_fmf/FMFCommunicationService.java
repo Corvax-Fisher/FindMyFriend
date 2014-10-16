@@ -36,17 +36,12 @@ import org.jivesoftware.smack.Chat;
 import org.jivesoftware.smack.ChatManager;
 import org.jivesoftware.smack.ChatManagerListener;
 import org.jivesoftware.smack.MessageListener;
-import org.jivesoftware.smack.PacketListener;
 import org.jivesoftware.smack.RosterEntry;
 import org.jivesoftware.smack.RosterListener;
 import org.jivesoftware.smack.SmackException;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
-import org.jivesoftware.smack.filter.MessageTypeFilter;
-import org.jivesoftware.smack.filter.PacketFilter;
-import org.jivesoftware.smack.filter.PacketTypeFilter;
 import org.jivesoftware.smack.packet.Message;
-import org.jivesoftware.smack.packet.Packet;
 import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.json.JSONArray;
@@ -97,7 +92,7 @@ public class FMFCommunicationService extends Service implements LocationListener
     private AsyncTask<Integer, Void, Integer> mConnectionTask;
     private boolean mLoadContactsTaskIsRunning = false;
 
-    public enum RET_CODE {OK, NO_PROVIDER, NOT_CONNECTED};
+    public enum RET_CODE {OK, NO_PROVIDER, NOT_CONNECTED}
 
     private final String XMPP_SERVER = "einfachjabber.de";
 
@@ -347,6 +342,8 @@ public class FMFCommunicationService extends Service implements LocationListener
 //        }
         registerReceiver(br, new IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION));
         registerReceiver(br, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
+
+
     }
 
     @Override
@@ -657,9 +654,8 @@ public class FMFCommunicationService extends Service implements LocationListener
     {
         //generate a 4 digit integer 1000 <10000
         int randomPIN = (int)(Math.random()*90000)+10000;
-        String genpass = "fmi"+String.valueOf(randomPIN);
         //Store integer in a string
-        return genpass;
+        return "fmi"+String.valueOf(randomPIN);
 
     }
 
@@ -871,7 +867,6 @@ public class FMFCommunicationService extends Service implements LocationListener
         // JSON Node names
         private static final String TAG_SUCCESS = "success";
         private static final String TAG_PRODUCTS = "registeredNumbers";
-        private static final String TAG_RID = "rID";
         private static final String TAG_NUMBER = "registeredNumber";
 
         // products JSONArray

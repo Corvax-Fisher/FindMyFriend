@@ -2,7 +2,6 @@ package com.example.fmi_fmf;
 
 import android.app.AlertDialog;
 import android.app.NotificationManager;
-import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -10,15 +9,18 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.CheckBox;
 import android.widget.ListView;
 import android.widget.Toast;
 
@@ -27,6 +29,8 @@ public class ContactListActivity extends FragmentActivity
 
     private static final String LOG_TAG = ContactListActivity.class.getSimpleName();
     public static final boolean D = true;
+
+    public static final String SHOW_CONTACTS_DIALOG = "show dialog in beginning";
 
     public static final String ACTION_SHOW_REQUEST_DIALOG = "show request dialog";
     public static final String ACTION_SHOW_DECLINE_DIALOG = "show decline dialog";
@@ -42,6 +46,7 @@ public class ContactListActivity extends FragmentActivity
 //    private AlertDialog mNotConnectedAlert;
 
     private ListView mContactListView;
+    private String mShowContactsDialog;
 
 //    private ContactListAdapter mContactsAdapter;
 //    ArrayList<FMFListEntry> mContacts;
@@ -56,6 +61,8 @@ public class ContactListActivity extends FragmentActivity
 //    JSONParser jParser = new JSONParser();
 
 //    ArrayList<HashMap<String, String>> registeredList;
+
+    public CheckBox dontShowAgain;
 
     private BroadcastReceiver br = new BroadcastReceiver() {
         @Override
@@ -80,6 +87,7 @@ public class ContactListActivity extends FragmentActivity
                 NotConnectedDialogFragment ncdf = new NotConnectedDialogFragment();
                 ncdf.show(getSupportFragmentManager(),"not connected");
             }
+
         }
     };
 
@@ -201,8 +209,8 @@ public class ContactListActivity extends FragmentActivity
                 try
                 { Intent i = new Intent(Intent.ACTION_SEND);
                     i.setType("text/plain");
-                    String sAux = "Follow My Friend ist eine tolle App, mit der Du meine Position herausfindest und mir sofort folgen kannst. Lade Dir gleich die App aus dem Store und probier's aus:\n";
-                    sAux = sAux + "https://play.google.com/store/apps/details?id=bla.bla \n";
+                    String sAux = "Follow My Friend ist eine Android-App, mit der Du meine Position herausfinden und mir folgen kannst. Lade Dir gleich die App aus dem Store und probier's aus:\n";
+                    sAux = sAux + "(Link zu Google Play Store, noch nicht öffentlich.) \n";
                     i.putExtra(Intent.EXTRA_TEXT, sAux);
                     startActivity(Intent.createChooser(i, "Freund einladen..."));
                 }
@@ -226,6 +234,7 @@ public class ContactListActivity extends FragmentActivity
 
         Intent intent = new Intent(this, FMFCommunicationService.class);
         bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+
     }
 
     @Override
@@ -265,6 +274,35 @@ public class ContactListActivity extends FragmentActivity
                 new IntentFilter(ACTION_SHOW_DECLINE_DIALOG));
         LocalBroadcastManager.getInstance(this).registerReceiver(br,
                 new IntentFilter(ACTION_SHOW_DISCONNECTED_DIALOG));
+
+
+        AlertDialog.Builder adb = new AlertDialog.Builder(this);
+
+        LayoutInflater adbInflater = LayoutInflater.from(this);
+        View eulaLayout = adbInflater.inflate(R.layout.checkbox, null);
+        dontShowAgain = (CheckBox) eulaLayout.findViewById(R.id.skip);
+        adb.setView(eulaLayout);
+        adb.setTitle(R.string.app_name);
+        adb.setIcon(R.drawable.ic_launcher);
+        adb.setMessage(R.string.message_contact_list);
+        adb.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int which) {
+                if (dontShowAgain.isChecked()){
+                    SharedPreferences settings = getSharedPreferences("FMFNumbers", Context.MODE_PRIVATE);
+                    SharedPreferences.Editor editor = settings.edit();
+                    editor.putString(SHOW_CONTACTS_DIALOG, "checked");
+                    // Commit the edits!
+                    editor.commit();
+                }
+                return;
+            }
+        });
+        SharedPreferences settings = getSharedPreferences("FMFNumbers", Context.MODE_PRIVATE);
+        String skipMessage = settings.getString(SHOW_CONTACTS_DIALOG, "");
+        if (skipMessage.isEmpty())
+            adb.show();
+
+        super.onResume();
     }
 
     @Override

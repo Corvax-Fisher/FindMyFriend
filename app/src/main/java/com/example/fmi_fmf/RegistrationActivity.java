@@ -70,7 +70,8 @@ public class RegistrationActivity extends Activity {
         //sharedpreferences zum testen löschen, damit registration activity aktiv wird
 //        SharedPreferences pref = getApplicationContext().getSharedPreferences("FMFNumbers", Context.MODE_PRIVATE);
 //        SharedPreferences.Editor editor = pref.edit();
-//        editor.clear();
+//        editor.putString(FMFCommunicationService.USERNAME,"fmf_017691361526");
+//        editor.putString(FMFCommunicationService.PASSWORD,"fmi28058");
 //        editor.commit();
 
         SharedPreferences sharedPref = getSharedPreferences("FMFNumbers",Context.MODE_PRIVATE);

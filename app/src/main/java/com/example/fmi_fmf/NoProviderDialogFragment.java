@@ -1,6 +1,5 @@
 package com.example.fmi_fmf;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
@@ -27,6 +26,7 @@ public class NoProviderDialogFragment extends DialogFragment {
         // Use the Builder class for convenient dialog construction
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
         builder.setTitle(R.string.title_no_provider_enabled)
+                .setIcon(R.drawable.ic_launcher)
                 .setMessage(R.string.message_no_provider_enabled)
                 .setCancelable(false)
                 .setPositiveButton(R.string.accept, new DialogInterface.OnClickListener() {

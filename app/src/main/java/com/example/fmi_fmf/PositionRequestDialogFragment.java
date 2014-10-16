@@ -71,6 +71,7 @@ public class PositionRequestDialogFragment extends DialogFragment {
         // Use the Builder class for convenient dialog construction
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
         builder.setTitle("Positionsanfrage")
+                .setIcon(R.drawable.ic_launcher)
                 .setMessage(mFullName + " möchte zu dir navigieren. Möchtest du die Anfrage akzeptieren?")
         //TODO (Martin): change this to a Yes/No dialog
                 .setPositiveButton(R.string.accept, new DialogInterface.OnClickListener() {
